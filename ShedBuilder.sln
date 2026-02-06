@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{7B011A82-7350-49BE-869B-F8C8559BECE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShedBuilder.Api", "src\ShedBuilder.Api\ShedBuilder.Api.csproj", "{1B4463CB-0A48-4B83-8A4B-1D28D5FE2E58}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C199B2DD-FA91-4FE1-8EE5-4CD91EE976E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShedBuilder.Api.Tests", "tests\ShedBuilder.Api.Tests\ShedBuilder.Api.Tests.csproj", "{A92FCA32-6F86-4753-840C-BBD18EEF6FCA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1B4463CB-0A48-4B83-8A4B-1D28D5FE2E58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B4463CB-0A48-4B83-8A4B-1D28D5FE2E58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B4463CB-0A48-4B83-8A4B-1D28D5FE2E58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B4463CB-0A48-4B83-8A4B-1D28D5FE2E58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A92FCA32-6F86-4753-840C-BBD18EEF6FCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A92FCA32-6F86-4753-840C-BBD18EEF6FCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A92FCA32-6F86-4753-840C-BBD18EEF6FCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A92FCA32-6F86-4753-840C-BBD18EEF6FCA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1B4463CB-0A48-4B83-8A4B-1D28D5FE2E58} = {7B011A82-7350-49BE-869B-F8C8559BECE3}
+		{A92FCA32-6F86-4753-840C-BBD18EEF6FCA} = {C199B2DD-FA91-4FE1-8EE5-4CD91EE976E8}
+	EndGlobalSection
+EndGlobal

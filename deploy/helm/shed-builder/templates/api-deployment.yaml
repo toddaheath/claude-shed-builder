@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shed-builder.fullname" . }}-api
+  labels:
+    {{- include "shed-builder.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.api.port }}
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              value: "Host={{ include "shed-builder.fullname" . }}-postgres;Database={{ .Values.postgres.database }};Username={{ .Values.postgres.username }};Password={{ .Values.postgres.password }}"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /api/designs
+              port: {{ .Values.api.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5

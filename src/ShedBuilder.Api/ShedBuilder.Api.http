@@ -1,0 +1,6 @@
+@ShedBuilder.Api_HostAddress = http://localhost:5125
+
+GET {{ShedBuilder.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
