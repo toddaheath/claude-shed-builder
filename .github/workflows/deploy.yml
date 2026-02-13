@@ -1,0 +1,113 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: "Image tag to deploy (e.g., 1.0.0)"
+        required: true
+        type: string
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  resolve-version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - name: Set version from dispatch
+        if: github.event_name == 'workflow_dispatch'
+        id: dispatch
+        run: |
+          echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "environment=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set version from release
+        if: github.event_name == 'workflow_run'
+        id: release
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "environment=staging" >> "$GITHUB_OUTPUT"
+
+      - name: Export outputs
+        id: version
+        run: echo "version=${{ steps.dispatch.outputs.version || steps.release.outputs.version }}" >> "$GITHUB_OUTPUT"
+
+      - name: Export environment
+        id: env
+        run: echo "environment=${{ steps.dispatch.outputs.environment || steps.release.outputs.environment }}" >> "$GITHUB_OUTPUT"
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: resolve-version
+    if: needs.resolve-version.outputs.environment == 'staging'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set kubeconfig
+        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install shed-builder deploy/helm/shed-builder \
+            --namespace staging --create-namespace \
+            --set api.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api \
+            --set api.image.tag=${{ needs.resolve-version.outputs.version }} \
+            --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
+            --set ui.image.tag=${{ needs.resolve-version.outputs.version }} \
+            --set postgres.password=${{ secrets.DB_PASSWORD }} \
+            --wait --timeout 5m
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: resolve-version
+    if: needs.resolve-version.outputs.environment == 'production'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set kubeconfig
+        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install shed-builder deploy/helm/shed-builder \
+            --namespace production --create-namespace \
+            --set api.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api \
+            --set api.image.tag=${{ needs.resolve-version.outputs.version }} \
+            --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
+            --set ui.image.tag=${{ needs.resolve-version.outputs.version }} \
+            --set postgres.password=${{ secrets.DB_PASSWORD }} \
+            --set ingress.enabled=true \
+            --set ingress.host=${{ vars.PRODUCTION_HOST }} \
+            --wait --timeout 5m
