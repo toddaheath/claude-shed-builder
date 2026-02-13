@@ -12,8 +12,8 @@ export function useDesignApi() {
   const loadDesigns = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await api.listDesigns();
-      setDesigns(list);
+      const result = await api.listDesigns();
+      setDesigns(result.items);
     } finally {
       setLoading(false);
     }

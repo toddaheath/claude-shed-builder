@@ -26,15 +26,26 @@ spec:
           ports:
             - containerPort: {{ .Values.api.port }}
           env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "shed-builder.fullname" . }}-db
+                  key: postgres-password
             - name: ConnectionStrings__DefaultConnection
-              value: "Host={{ include "shed-builder.fullname" . }}-postgres;Database={{ .Values.postgres.database }};Username={{ .Values.postgres.username }};Password={{ .Values.postgres.password }}"
+              value: "Host={{ include "shed-builder.fullname" . }}-postgres;Database={{ .Values.postgres.database }};Username={{ .Values.postgres.username }};Password=$(DB_PASSWORD)"
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.api.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /api/designs
+              path: /health/ready
               port: {{ .Values.api.port }}
             initialDelaySeconds: 10
             periodSeconds: 5

@@ -13,27 +13,63 @@ public class DesignsController : ControllerBase
     private readonly ShedDbContext _db;
     private readonly IBomCalculator _bom;
     private readonly IStlExporter _stl;
+    private readonly IPriceService _priceService;
+    private readonly IPdfExporter _pdfExporter;
 
-    public DesignsController(ShedDbContext db, IBomCalculator bom, IStlExporter stl)
+    public DesignsController(ShedDbContext db, IBomCalculator bom, IStlExporter stl,
+        IPriceService priceService, IPdfExporter pdfExporter)
     {
         _db = db;
         _bom = bom;
         _stl = stl;
+        _priceService = priceService;
+        _pdfExporter = pdfExporter;
     }
 
+    private User GetCurrentUser() => (User)HttpContext.Items["User"]!;
+
     [HttpGet]
-    public async Task<ActionResult<List<DesignResponse>>> List()
+    public async Task<ActionResult<PaginatedResponse<DesignResponse>>> List(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null)
     {
-        var designs = await _db.Designs
+        var user = GetCurrentUser();
+
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 1;
+        if (pageSize > 100) pageSize = 100;
+
+        var query = _db.Designs.Where(d => d.UserId == user.Id);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(d => d.Name.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var designs = await query
             .OrderByDescending(d => d.UpdatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
-        return designs.Select(MapToResponse).ToList();
+
+        return new PaginatedResponse<DesignResponse>
+        {
+            Items = designs.Select(MapToResponse).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DesignResponse>> Get(Guid id)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
         return MapToResponse(design);
     }
@@ -41,10 +77,11 @@ public class DesignsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DesignResponse>> Create(CreateDesignRequest request)
     {
+        var user = GetCurrentUser();
         var design = new Design
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
+            Name = request.Name.Trim(),
             WidthFeet = request.WidthFeet,
             WidthInches = request.WidthInches,
             DepthFeet = request.DepthFeet,
@@ -53,6 +90,16 @@ public class DesignsController : ControllerBase
             HeightInches = request.HeightInches,
             RoofPitch = request.RoofPitch,
             RoofType = request.RoofType,
+            Openings = request.Openings?.Select(o => new Opening
+            {
+                Type = o.Type,
+                Wall = o.Wall,
+                OffsetInches = o.OffsetInches,
+                WidthInches = o.WidthInches,
+                HeightInches = o.HeightInches,
+                SillHeightInches = o.SillHeightInches,
+            }).ToList() ?? new List<Opening>(),
+            UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -66,10 +113,11 @@ public class DesignsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<DesignResponse>> Update(Guid id, UpdateDesignRequest request)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
-        if (request.Name != null) design.Name = request.Name;
+        if (request.Name != null) design.Name = request.Name.Trim();
         if (request.WidthFeet.HasValue) design.WidthFeet = request.WidthFeet.Value;
         if (request.WidthInches.HasValue) design.WidthInches = request.WidthInches.Value;
         if (request.DepthFeet.HasValue) design.DepthFeet = request.DepthFeet.Value;
@@ -78,6 +126,18 @@ public class DesignsController : ControllerBase
         if (request.HeightInches.HasValue) design.HeightInches = request.HeightInches.Value;
         if (request.RoofPitch.HasValue) design.RoofPitch = request.RoofPitch.Value;
         if (request.RoofType.HasValue) design.RoofType = request.RoofType.Value;
+        if (request.Openings != null)
+        {
+            design.Openings = request.Openings.Select(o => new Opening
+            {
+                Type = o.Type,
+                Wall = o.Wall,
+                OffsetInches = o.OffsetInches,
+                WidthInches = o.WidthInches,
+                HeightInches = o.HeightInches,
+                SillHeightInches = o.SillHeightInches,
+            }).ToList();
+        }
         design.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -87,7 +147,8 @@ public class DesignsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         _db.Designs.Remove(design);
@@ -98,7 +159,8 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/bom")]
     public async Task<ActionResult<BomResponse>> GetBom(Guid id)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
         return _bom.Calculate(design);
     }
@@ -106,17 +168,84 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/stl")]
     public async Task<IActionResult> GetStl(Guid id)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         var bytes = _stl.Export(design);
         return File(bytes, "application/octet-stream", $"{design.Name}.stl");
     }
 
+    [HttpGet("{id:guid}/cost")]
+    public async Task<ActionResult<CostResponse>> GetCost(Guid id)
+    {
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        if (design == null) return NotFound();
+
+        var bomResult = _bom.Calculate(design);
+        var costItems = bomResult.Items.Select(item =>
+        {
+            var unitPrice = _priceService.GetUnitPrice(item.Material, item.Dimensions);
+            return new CostBomItem
+            {
+                Material = item.Material,
+                Dimensions = item.Dimensions,
+                Quantity = item.Quantity,
+                Unit = item.Unit,
+                Category = item.Category,
+                UnitPrice = unitPrice,
+                TotalPrice = unitPrice * item.Quantity,
+            };
+        }).ToList();
+
+        return new CostResponse
+        {
+            DesignId = design.Id,
+            Items = costItems,
+            GrandTotal = costItems.Sum(i => i.TotalPrice),
+        };
+    }
+
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> GetPdf(Guid id)
+    {
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        if (design == null) return NotFound();
+
+        var bomResult = _bom.Calculate(design);
+        var costItems = bomResult.Items.Select(item =>
+        {
+            var unitPrice = _priceService.GetUnitPrice(item.Material, item.Dimensions);
+            return new CostBomItem
+            {
+                Material = item.Material,
+                Dimensions = item.Dimensions,
+                Quantity = item.Quantity,
+                Unit = item.Unit,
+                Category = item.Category,
+                UnitPrice = unitPrice,
+                TotalPrice = unitPrice * item.Quantity,
+            };
+        }).ToList();
+
+        var costResponse = new CostResponse
+        {
+            DesignId = design.Id,
+            Items = costItems,
+            GrandTotal = costItems.Sum(i => i.TotalPrice),
+        };
+
+        var pdfBytes = _pdfExporter.Export(design, costResponse);
+        return File(pdfBytes, "application/pdf", $"{design.Name}.pdf");
+    }
+
     [HttpGet("{id:guid}/versions")]
     public async Task<ActionResult<List<VersionResponse>>> ListVersions(Guid id)
     {
-        var designExists = await _db.Designs.AnyAsync(d => d.Id == id);
+        var user = GetCurrentUser();
+        var designExists = await _db.Designs.AnyAsync(d => d.Id == id && d.UserId == user.Id);
         if (!designExists) return NotFound();
 
         var versions = await _db.DesignVersions
@@ -129,7 +258,8 @@ public class DesignsController : ControllerBase
     [HttpPost("{id:guid}/versions")]
     public async Task<ActionResult<VersionResponse>> CreateVersion(Guid id, CreateVersionRequest request)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         var maxVersion = await _db.DesignVersions
@@ -162,6 +292,10 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/versions/{vid:guid}")]
     public async Task<ActionResult<VersionResponse>> GetVersion(Guid id, Guid vid)
     {
+        var user = GetCurrentUser();
+        var designExists = await _db.Designs.AnyAsync(d => d.Id == id && d.UserId == user.Id);
+        if (!designExists) return NotFound();
+
         var version = await _db.DesignVersions
             .FirstOrDefaultAsync(v => v.Id == vid && v.DesignId == id);
         if (version == null) return NotFound();
@@ -171,7 +305,8 @@ public class DesignsController : ControllerBase
     [HttpPost("{id:guid}/versions/{vid:guid}/restore")]
     public async Task<ActionResult<DesignResponse>> RestoreVersion(Guid id, Guid vid)
     {
-        var design = await _db.Designs.FindAsync(id);
+        var user = GetCurrentUser();
+        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         var version = await _db.DesignVersions
@@ -204,6 +339,15 @@ public class DesignsController : ControllerBase
         HeightInches = d.HeightInches,
         RoofPitch = d.RoofPitch,
         RoofType = d.RoofType,
+        Openings = d.Openings.Select(o => new OpeningDto
+        {
+            Type = o.Type,
+            Wall = o.Wall,
+            OffsetInches = o.OffsetInches,
+            WidthInches = o.WidthInches,
+            HeightInches = o.HeightInches,
+            SillHeightInches = o.SillHeightInches,
+        }).ToList(),
         CreatedAt = d.CreatedAt,
         UpdatedAt = d.UpdatedAt
     };

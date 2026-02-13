@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -13,7 +14,10 @@ public class DesignsControllerTests : IDisposable
     private readonly ShedDbContext _db;
     private readonly Mock<IBomCalculator> _bomMock;
     private readonly Mock<IStlExporter> _stlMock;
+    private readonly Mock<IPriceService> _priceMock;
+    private readonly Mock<IPdfExporter> _pdfMock;
     private readonly DesignsController _controller;
+    private readonly User _testUser;
 
     public DesignsControllerTests()
     {
@@ -23,7 +27,28 @@ public class DesignsControllerTests : IDisposable
         _db = new ShedDbContext(options);
         _bomMock = new Mock<IBomCalculator>();
         _stlMock = new Mock<IStlExporter>();
-        _controller = new DesignsController(_db, _bomMock.Object, _stlMock.Object);
+        _priceMock = new Mock<IPriceService>();
+        _pdfMock = new Mock<IPdfExporter>();
+        _controller = new DesignsController(_db, _bomMock.Object, _stlMock.Object,
+            _priceMock.Object, _pdfMock.Object);
+
+        _testUser = new User
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test User",
+            Email = "test@example.com",
+            ApiKey = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.Users.Add(_testUser);
+        _db.SaveChanges();
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items["User"] = _testUser;
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = httpContext
+        };
     }
 
     public void Dispose()
@@ -42,10 +67,12 @@ public class DesignsControllerTests : IDisposable
     };
 
     [Fact]
-    public async Task List_ReturnsEmptyList()
+    public async Task List_ReturnsEmptyPaginatedResponse()
     {
         var result = await _controller.List();
-        Assert.Empty(result.Value!);
+        var paginated = result.Value!;
+        Assert.Empty(paginated.Items);
+        Assert.Equal(0, paginated.TotalCount);
     }
 
     [Fact]
@@ -243,18 +270,14 @@ public class DesignsControllerTests : IDisposable
         var createResult = await _controller.Create(DefaultCreateRequest());
         var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
 
-        // Save version
         var versionResult = await _controller.CreateVersion(id, new CreateVersionRequest { Label = "original" });
         var vid = ((versionResult.Result as CreatedAtActionResult)!.Value as VersionResponse)!.Id;
 
-        // Modify design
         await _controller.Update(id, new UpdateDesignRequest { WidthFeet = 20 });
 
-        // Verify changed
         var modified = await _controller.Get(id);
         Assert.Equal(20, modified.Value!.WidthFeet);
 
-        // Restore
         var restored = await _controller.RestoreVersion(id, vid);
         Assert.Equal(8, restored.Value!.WidthFeet);
     }
@@ -283,6 +306,56 @@ public class DesignsControllerTests : IDisposable
         await _controller.Create(new CreateDesignRequest { Name = "Second" });
 
         var result = await _controller.List();
-        Assert.Equal("Second", result.Value![0].Name);
+        Assert.Equal("Second", result.Value!.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task List_Pagination_ReturnsCorrectPage()
+    {
+        for (int i = 0; i < 5; i++)
+            await _controller.Create(new CreateDesignRequest { Name = $"Shed {i}" });
+
+        var result = await _controller.List(page: 2, pageSize: 2);
+        var paginated = result.Value!;
+        Assert.Equal(2, paginated.Items.Count);
+        Assert.Equal(5, paginated.TotalCount);
+        Assert.Equal(2, paginated.Page);
+        Assert.Equal(2, paginated.PageSize);
+    }
+
+    [Fact]
+    public async Task List_Search_FiltersResults()
+    {
+        await _controller.Create(new CreateDesignRequest { Name = "Red Shed" });
+        await _controller.Create(new CreateDesignRequest { Name = "Blue Shed" });
+        await _controller.Create(new CreateDesignRequest { Name = "Green Barn" });
+
+        var result = await _controller.List(search: "shed");
+        Assert.Equal(2, result.Value!.TotalCount);
+    }
+
+    [Fact]
+    public async Task Get_OtherUsersDesign_ReturnsNotFound()
+    {
+        // Create design as test user
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        // Switch to different user
+        var otherUser = new User
+        {
+            Id = Guid.NewGuid(),
+            Name = "Other",
+            Email = "other@example.com",
+            ApiKey = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.Users.Add(otherUser);
+        await _db.SaveChangesAsync();
+
+        _controller.ControllerContext.HttpContext.Items["User"] = otherUser;
+
+        var result = await _controller.Get(id);
+        Assert.IsType<NotFoundResult>(result.Result);
     }
 }
