@@ -40,6 +40,12 @@ postgres:
     size: 1Gi
     storageClass: ""
 
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
 ingress:
   enabled: false
   className: nginx

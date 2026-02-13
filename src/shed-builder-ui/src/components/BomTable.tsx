@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -10,9 +10,11 @@ import {
   Typography,
   Box,
   Button,
+  Stack,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
-import type { BomResponse } from '../types';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import type { BomResponse, CostResponse } from '../types';
 import { api } from '../services/api';
 
 interface Props {
@@ -23,27 +25,45 @@ interface Props {
 }
 
 export default function BomTable({ designId, designName, bom, onLoadBom }: Props) {
+  const [cost, setCost] = useState<CostResponse | null>(null);
+
   useEffect(() => {
     onLoadBom(designId);
+    api.getCost(designId).then(setCost).catch(() => setCost(null));
   }, [designId, onLoadBom]);
 
-  const grouped = bom?.items.reduce<Record<string, typeof bom.items>>((acc, item) => {
+  const grouped = cost?.items.reduce<Record<string, typeof cost.items>>((acc, item) => {
+    (acc[item.category] ??= []).push(item);
+    return acc;
+  }, {}) ?? bom?.items.reduce<Record<string, typeof bom.items>>((acc, item) => {
     (acc[item.category] ??= []).push(item);
     return acc;
   }, {});
+
+  const hasCost = cost !== null;
 
   return (
     <Box sx={{ p: 2 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h6">Bill of Materials</Typography>
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={() => api.downloadStl(designId, designName)}
-          size="small"
-        >
-          Export STL
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<PictureAsPdfIcon />}
+            onClick={() => api.downloadPdf(designId, designName)}
+            size="small"
+          >
+            PDF
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={() => api.downloadStl(designId, designName)}
+            size="small"
+          >
+            STL
+          </Button>
+        </Stack>
       </Box>
 
       {grouped && Object.entries(grouped).map(([category, items]) => (
@@ -59,6 +79,8 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
                   <TableCell>Dimensions</TableCell>
                   <TableCell align="right">Qty</TableCell>
                   <TableCell>Unit</TableCell>
+                  {hasCost && <TableCell align="right">Unit $</TableCell>}
+                  {hasCost && <TableCell align="right">Total $</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -68,6 +90,12 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
                     <TableCell>{item.dimensions}</TableCell>
                     <TableCell align="right">{item.quantity}</TableCell>
                     <TableCell>{item.unit}</TableCell>
+                    {hasCost && 'unitPrice' in item && (
+                      <>
+                        <TableCell align="right">${(item as unknown as { unitPrice: number }).unitPrice.toFixed(0)}</TableCell>
+                        <TableCell align="right">${(item as unknown as { totalPrice: number }).totalPrice.toFixed(0)}</TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -75,6 +103,14 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
           </TableContainer>
         </Box>
       ))}
+
+      {hasCost && (
+        <Box display="flex" justifyContent="flex-end" mt={2}>
+          <Typography variant="h6" color="primary">
+            Grand Total: ${cost.grandTotal.toFixed(2)}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 }

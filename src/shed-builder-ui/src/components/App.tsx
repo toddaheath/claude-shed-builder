@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Box,
   CssBaseline,
@@ -8,8 +8,15 @@ import {
   Drawer,
   Tab,
   Tabs,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Design, UpdateDesignRequest } from '../types';
 import { useDesignApi } from '../hooks/useDesignApi';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -22,14 +29,36 @@ import VersionPanel from './VersionPanel';
 const drawerWidth = 280;
 const rightPanelWidth = 380;
 
-const theme = createTheme({
-  palette: {
-    primary: { main: '#5D4037' },
-    secondary: { main: '#8D6E63' },
-  },
-});
+function getStoredMode(): 'light' | 'dark' | null {
+  try {
+    const v = localStorage.getItem('shed-builder-theme');
+    if (v === 'light' || v === 'dark') return v;
+  } catch { /* ignore */ }
+  return null;
+}
 
 export default function App() {
+  const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
+  const [mode, setMode] = useState<'light' | 'dark'>(() => getStoredMode() ?? (prefersDark ? 'dark' : 'light'));
+
+  const toggleDarkMode = useCallback(() => {
+    setMode(prev => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('shed-builder-theme', next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const theme = useMemo(() => createTheme({
+    palette: {
+      mode,
+      primary: { main: '#5D4037' },
+      secondary: { main: '#8D6E63' },
+      ...(mode === 'dark' && {
+        background: { default: '#1a1210', paper: '#2c211c' },
+      }),
+    },
+  }), [mode]);
   const {
     designs,
     currentDesign,
@@ -48,6 +77,11 @@ export default function App() {
   const [rightTab, setRightTab] = useState(0);
   const [localDesign, setLocalDesign] = useState<Design | null>(null);
 
+  // Undo/redo stacks
+  const undoStackRef = useRef<Design[]>([]);
+  const redoStackRef = useRef<Design[]>([]);
+  const [undoRedoVersion, setUndoRedoVersion] = useState(0);
+
   // Sync localDesign when currentDesign changes from API
   const activeDesign = localDesign?.id === currentDesign?.id ? localDesign : currentDesign;
 
@@ -63,24 +97,72 @@ export default function App() {
       heightInches: activeDesign.heightInches,
       roofPitch: activeDesign.roofPitch,
       roofType: activeDesign.roofType,
+      openings: activeDesign.openings,
     };
   }, [activeDesign]);
 
   const saveStatus = useAutoSave(activeDesign?.id ?? null, updateData);
 
+  const pushUndo = useCallback((design: Design) => {
+    undoStackRef.current.push(design);
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    redoStackRef.current = [];
+    setUndoRedoVersion(v => v + 1);
+  }, []);
+
   const handleDesignChange = useCallback(
     (update: UpdateDesignRequest) => {
       if (!activeDesign) return;
+      pushUndo(activeDesign);
       const merged = { ...activeDesign, ...update } as Design;
       setLocalDesign(merged);
       setCurrentDesign(merged);
     },
-    [activeDesign, setCurrentDesign]
+    [activeDesign, setCurrentDesign, pushUndo]
   );
+
+  const handleUndo = useCallback(() => {
+    const prev = undoStackRef.current.pop();
+    if (prev && activeDesign) {
+      redoStackRef.current.push(activeDesign);
+      setLocalDesign(prev);
+      setCurrentDesign(prev);
+      setUndoRedoVersion(v => v + 1);
+    }
+  }, [activeDesign, setCurrentDesign]);
+
+  const handleRedo = useCallback(() => {
+    const next = redoStackRef.current.pop();
+    if (next && activeDesign) {
+      undoStackRef.current.push(activeDesign);
+      setLocalDesign(next);
+      setCurrentDesign(next);
+      setUndoRedoVersion(v => v + 1);
+    }
+  }, [activeDesign, setCurrentDesign]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
 
   const handleSelectDesign = useCallback(
     (id: string) => {
       setLocalDesign(null);
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      setUndoRedoVersion(v => v + 1);
       loadDesign(id);
     },
     [loadDesign]
@@ -93,15 +175,49 @@ export default function App() {
     [createDesign]
   );
 
+  const canUndo = undoStackRef.current.length > 0;
+  const canRedo = redoStackRef.current.length > 0;
+  // Reference undoRedoVersion to trigger re-render
+  void undoRedoVersion;
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <a href="#main-content" className="sr-only" style={{
+        position: 'absolute', left: '-9999px', top: 'auto', width: '1px', height: '1px',
+        overflow: 'hidden', zIndex: 9999,
+      }}>
+        Skip to main content
+      </a>
       <Box sx={{ display: 'flex', height: '100vh' }}>
         <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
           <Toolbar>
-            <Typography variant="h6" noWrap>
+            <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
               Shed Builder
             </Typography>
+            {activeDesign && (
+              <>
+                <Tooltip title="Undo (Ctrl+Z)">
+                  <span>
+                    <IconButton color="inherit" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
+                      <UndoIcon />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Redo (Ctrl+Y)">
+                  <span>
+                    <IconButton color="inherit" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
+                      <RedoIcon />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </>
+            )}
+            <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              <IconButton color="inherit" onClick={toggleDarkMode} aria-label="Toggle dark mode">
+                {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+              </IconButton>
+            </Tooltip>
           </Toolbar>
         </AppBar>
 
@@ -115,18 +231,22 @@ export default function App() {
           }}
         >
           <Toolbar />
-          <DesignList
-            designs={designs}
-            selectedId={activeDesign?.id ?? null}
-            onSelect={handleSelectDesign}
-            onCreate={handleCreateDesign}
-            onDelete={deleteDesign}
-          />
+          <nav aria-label="Design list">
+            <DesignList
+              designs={designs}
+              selectedId={activeDesign?.id ?? null}
+              onSelect={handleSelectDesign}
+              onCreate={handleCreateDesign}
+              onDelete={deleteDesign}
+            />
+          </nav>
         </Drawer>
 
         {/* Main: 3D viewer */}
         <Box
           component="main"
+          id="main-content"
+          role="main"
           sx={{
             flexGrow: 1,
             pt: 8,
@@ -136,8 +256,8 @@ export default function App() {
           }}
         >
           {activeDesign ? (
-            <Box sx={{ flexGrow: 1 }}>
-              <ShedViewer3D design={activeDesign} />
+            <Box sx={{ flexGrow: 1 }} aria-label="3D shed preview" role="img">
+              <ShedViewer3D design={activeDesign} darkMode={mode === 'dark'} />
             </Box>
           ) : (
             <Box
@@ -165,12 +285,17 @@ export default function App() {
             }}
           >
             <Toolbar />
-            <Tabs value={rightTab} onChange={(_, v) => setRightTab(v)} variant="fullWidth">
-              <Tab label="Design" />
-              <Tab label="BOM" />
-              <Tab label="Versions" />
+            <Tabs
+              value={rightTab}
+              onChange={(_, v) => setRightTab(v)}
+              variant="fullWidth"
+              aria-label="Design panel tabs"
+            >
+              <Tab label="Design" id="tab-design" aria-controls="tabpanel-design" />
+              <Tab label="BOM" id="tab-bom" aria-controls="tabpanel-bom" />
+              <Tab label="Versions" id="tab-versions" aria-controls="tabpanel-versions" />
             </Tabs>
-            <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
+            <Box sx={{ overflow: 'auto', flexGrow: 1 }} role="tabpanel">
               {rightTab === 0 && (
                 <DesignPanel
                   design={activeDesign}

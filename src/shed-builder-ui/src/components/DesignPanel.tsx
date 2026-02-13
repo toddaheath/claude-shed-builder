@@ -8,8 +8,13 @@ import {
   Typography,
   Chip,
   Stack,
+  Button,
+  IconButton,
+  Divider,
 } from '@mui/material';
-import type { Design, UpdateDesignRequest, SaveStatus, RoofType } from '../types';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import type { Design, UpdateDesignRequest, SaveStatus, RoofType, Opening, OpeningType, WallSide } from '../types';
 
 interface Props {
   design: Design;
@@ -29,6 +34,29 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
     saving: 'Saving...',
     saved: 'Saved',
     error: 'Error saving',
+  };
+
+  const addOpening = () => {
+    const newOpening: Opening = {
+      type: 'Door',
+      wall: 'Front',
+      offsetInches: 24,
+      widthInches: 36,
+      heightInches: 80,
+      sillHeightInches: 0,
+    };
+    onChange({ openings: [...(design.openings || []), newOpening] });
+  };
+
+  const updateOpening = (index: number, updates: Partial<Opening>) => {
+    const openings = [...(design.openings || [])];
+    openings[index] = { ...openings[index], ...updates };
+    onChange({ openings });
+  };
+
+  const removeOpening = (index: number) => {
+    const openings = (design.openings || []).filter((_, i) => i !== index);
+    onChange({ openings });
   };
 
   return (
@@ -55,7 +83,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
           size="small"
           value={design.widthFeet}
           onChange={(e) => onChange({ widthFeet: Number(e.target.value) })}
-          inputProps={{ min: 4, max: 40 }}
+          inputProps={{ min: 4, max: 60 }}
         />
         <TextField
           label="Inches"
@@ -75,7 +103,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
           size="small"
           value={design.depthFeet}
           onChange={(e) => onChange({ depthFeet: Number(e.target.value) })}
-          inputProps={{ min: 4, max: 40 }}
+          inputProps={{ min: 4, max: 60 }}
         />
         <TextField
           label="Inches"
@@ -95,7 +123,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
           size="small"
           value={design.heightFeet}
           onChange={(e) => onChange({ heightFeet: Number(e.target.value) })}
-          inputProps={{ min: 6, max: 16 }}
+          inputProps={{ min: 6, max: 20 }}
         />
         <TextField
           label="Inches"
@@ -118,7 +146,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
         sx={{ mb: 2 }}
       />
 
-      <FormControl fullWidth size="small">
+      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
         <InputLabel>Roof Type</InputLabel>
         <Select
           value={design.roofType}
@@ -129,6 +157,97 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
           <MenuItem value="LeanTo">Lean-To</MenuItem>
         </Select>
       </FormControl>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+        <Typography variant="subtitle1">Doors & Windows</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={addOpening}>
+          Add
+        </Button>
+      </Stack>
+
+      {(design.openings || []).map((opening, index) => (
+        <Box key={index} sx={{ mb: 2, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+            <Typography variant="body2" fontWeight="bold">
+              {opening.type} #{index + 1}
+            </Typography>
+            <IconButton size="small" onClick={() => removeOpening(index)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+
+          <Stack direction="row" spacing={1} mb={1}>
+            <FormControl size="small" sx={{ minWidth: 80 }}>
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={opening.type}
+                label="Type"
+                onChange={(e) => updateOpening(index, { type: e.target.value as OpeningType })}
+              >
+                <MenuItem value="Door">Door</MenuItem>
+                <MenuItem value="Window">Window</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 80 }}>
+              <InputLabel>Wall</InputLabel>
+              <Select
+                value={opening.wall}
+                label="Wall"
+                onChange={(e) => updateOpening(index, { wall: e.target.value as WallSide })}
+              >
+                <MenuItem value="Front">Front</MenuItem>
+                <MenuItem value="Back">Back</MenuItem>
+                <MenuItem value="Left">Left</MenuItem>
+                <MenuItem value="Right">Right</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+
+          <Stack direction="row" spacing={1} mb={1}>
+            <TextField
+              label="Width (in)"
+              type="number"
+              size="small"
+              value={opening.widthInches}
+              onChange={(e) => updateOpening(index, { widthInches: Number(e.target.value) })}
+              inputProps={{ min: 12, max: 96 }}
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              label="Height (in)"
+              type="number"
+              size="small"
+              value={opening.heightInches}
+              onChange={(e) => updateOpening(index, { heightInches: Number(e.target.value) })}
+              inputProps={{ min: 12, max: 96 }}
+              sx={{ flex: 1 }}
+            />
+          </Stack>
+
+          <Stack direction="row" spacing={1}>
+            <TextField
+              label="Offset (in)"
+              type="number"
+              size="small"
+              value={opening.offsetInches}
+              onChange={(e) => updateOpening(index, { offsetInches: Number(e.target.value) })}
+              inputProps={{ min: 0 }}
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              label="Sill (in)"
+              type="number"
+              size="small"
+              value={opening.sillHeightInches}
+              onChange={(e) => updateOpening(index, { sillHeightInches: Number(e.target.value) })}
+              inputProps={{ min: 0 }}
+              sx={{ flex: 1 }}
+            />
+          </Stack>
+        </Box>
+      ))}
     </Box>
   );
 }

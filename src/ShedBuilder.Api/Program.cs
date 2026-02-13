@@ -1,8 +1,16 @@
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using ShedBuilder.Api.Data;
+using ShedBuilder.Api.Middleware;
 using ShedBuilder.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, config) => config
+    .ReadFrom.Configuration(context.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"));
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -20,6 +28,10 @@ builder.Services.AddDbContext<ShedDbContext>(options =>
 builder.Services.AddScoped<IMeasurementHelper, MeasurementHelper>();
 builder.Services.AddScoped<IBomCalculator, BomCalculator>();
 builder.Services.AddScoped<IStlExporter, StlExporter>();
+builder.Services.AddSingleton<IPriceService, PriceService>();
+builder.Services.AddScoped<IPdfExporter, PdfExporter>();
+
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 builder.Services.AddCors(options =>
 {
@@ -31,6 +43,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var healthChecks = builder.Services.AddHealthChecks();
+if (!string.IsNullOrEmpty(connectionString))
+{
+    healthChecks.AddNpgSql(connectionString);
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -39,8 +58,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseSerilogRequestLogging();
 app.UseCors();
+app.UseMiddleware<ApiKeyAuthMiddleware>();
 app.MapControllers();
+
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false // No dependency checks for liveness
+});
+app.MapHealthChecks("/health/ready");
 
 // Auto-migrate on startup (skip for non-relational providers like InMemory)
 using (var scope = app.Services.CreateScope())

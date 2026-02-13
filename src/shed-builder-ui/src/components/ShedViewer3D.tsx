@@ -1,10 +1,11 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import type { Design } from '../types';
+import type { Design, Opening, WallSide } from '../types';
 import * as THREE from 'three';
 
 interface Props {
   design: Design;
+  darkMode?: boolean;
 }
 
 function toInches(feet: number, inches: number) {
@@ -16,45 +17,107 @@ function scale(inches: number) {
   return inches / 12;
 }
 
+function getWallOpenings(openings: Opening[], wall: WallSide): Opening[] {
+  return (openings || []).filter(o => o.wall === wall);
+}
+
+function WallWithOpenings({
+  wallWidthIn,
+  wallHeightIn,
+  openings,
+  position,
+  rotation,
+}: {
+  wallWidthIn: number;
+  wallHeightIn: number;
+  openings: Opening[];
+  position: [number, number, number];
+  rotation: [number, number, number];
+}) {
+  const w = scale(wallWidthIn);
+  const h = scale(wallHeightIn);
+  const wallThickness = 0.1;
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Full wall */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[w, h, wallThickness]} />
+        <meshStandardMaterial color="#F5DEB3" />
+      </mesh>
+
+      {/* Opening cutouts rendered as dark boxes slightly in front */}
+      {openings.map((opening, i) => {
+        const ow = scale(opening.widthInches);
+        const oh = scale(opening.heightInches);
+        const ox = scale(opening.offsetInches + opening.widthInches / 2) - w / 2;
+        const oy = scale(opening.sillHeightInches + opening.heightInches / 2) - h / 2;
+
+        return (
+          <mesh key={i} position={[ox, oy, wallThickness / 2 + 0.01]}>
+            <boxGeometry args={[ow, oh, 0.02]} />
+            <meshStandardMaterial color="#2C1810" />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 function ShedGeometry({ design }: Props) {
-  const w = scale(toInches(design.widthFeet, design.widthInches));
-  const d = scale(toInches(design.depthFeet, design.depthInches));
-  const h = scale(toInches(design.heightFeet, design.heightInches));
+  const wIn = toInches(design.widthFeet, design.widthInches);
+  const dIn = toInches(design.depthFeet, design.depthInches);
+  const hIn = toInches(design.heightFeet, design.heightInches);
+  const w = scale(wIn);
+  const d = scale(dIn);
+  const h = scale(hIn);
   const pitch = design.roofPitch;
 
-  const wallThickness = 0.1;
+  const openings = design.openings || [];
 
   return (
     <group position={[-w / 2, 0, -d / 2]}>
       {/* Floor */}
       <mesh position={[w / 2, 0, d / 2]}>
-        <boxGeometry args={[w, wallThickness, d]} />
+        <boxGeometry args={[w, 0.1, d]} />
         <meshStandardMaterial color="#8B4513" />
       </mesh>
 
-      {/* Front wall */}
-      <mesh position={[w / 2, h / 2, 0]}>
-        <boxGeometry args={[w, h, wallThickness]} />
-        <meshStandardMaterial color="#F5DEB3" />
-      </mesh>
+      {/* Front wall (z=0) */}
+      <WallWithOpenings
+        wallWidthIn={wIn}
+        wallHeightIn={hIn}
+        openings={getWallOpenings(openings, 'Front')}
+        position={[w / 2, h / 2, 0]}
+        rotation={[0, 0, 0]}
+      />
 
-      {/* Back wall */}
-      <mesh position={[w / 2, h / 2, d]}>
-        <boxGeometry args={[w, h, wallThickness]} />
-        <meshStandardMaterial color="#F5DEB3" />
-      </mesh>
+      {/* Back wall (z=depth) */}
+      <WallWithOpenings
+        wallWidthIn={wIn}
+        wallHeightIn={hIn}
+        openings={getWallOpenings(openings, 'Back')}
+        position={[w / 2, h / 2, d]}
+        rotation={[0, 0, 0]}
+      />
 
-      {/* Left wall */}
-      <mesh position={[0, h / 2, d / 2]}>
-        <boxGeometry args={[wallThickness, h, d]} />
-        <meshStandardMaterial color="#F5DEB3" />
-      </mesh>
+      {/* Left wall (x=0) */}
+      <WallWithOpenings
+        wallWidthIn={dIn}
+        wallHeightIn={hIn}
+        openings={getWallOpenings(openings, 'Left')}
+        position={[0, h / 2, d / 2]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
 
-      {/* Right wall */}
-      <mesh position={[w, h / 2, d / 2]}>
-        <boxGeometry args={[wallThickness, h, d]} />
-        <meshStandardMaterial color="#F5DEB3" />
-      </mesh>
+      {/* Right wall (x=width) */}
+      <WallWithOpenings
+        wallWidthIn={dIn}
+        wallHeightIn={hIn}
+        openings={getWallOpenings(openings, 'Right')}
+        position={[w, h / 2, d / 2]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
 
       {/* Roof */}
       {design.roofType === 'Gable' ? (
@@ -146,16 +209,19 @@ function LeanToTriangle({ w, rise }: { w: number; rise: number }) {
   return <shapeGeometry args={[shape]} />;
 }
 
-export default function ShedViewer3D({ design }: Props) {
+export default function ShedViewer3D({ design, darkMode = false }: Props) {
+  const bg = darkMode ? '#1a1210' : '#e8e8e8';
+  const gridColors: [string, string] = darkMode ? ['#555', '#333'] : ['#999', '#ccc'];
+
   return (
     <Canvas
       camera={{ position: [15, 12, 15], fov: 50 }}
-      style={{ background: '#e8e8e8' }}
+      style={{ background: bg }}
     >
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <ambientLight intensity={darkMode ? 0.4 : 0.5} />
+      <directionalLight position={[10, 10, 5]} intensity={darkMode ? 0.8 : 1} />
       <ShedGeometry design={design} />
-      <gridHelper args={[30, 30, '#999', '#ccc']} />
+      <gridHelper args={[30, 30, gridColors[0], gridColors[1]]} />
       <OrbitControls />
     </Canvas>
   );

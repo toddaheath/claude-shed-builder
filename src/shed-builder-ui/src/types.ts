@@ -1,4 +1,15 @@
 export type RoofType = 'Gable' | 'LeanTo';
+export type OpeningType = 'Door' | 'Window';
+export type WallSide = 'Front' | 'Back' | 'Left' | 'Right';
+
+export interface Opening {
+  type: OpeningType;
+  wall: WallSide;
+  offsetInches: number;
+  widthInches: number;
+  heightInches: number;
+  sillHeightInches: number;
+}
 
 export interface Design {
   id: string;
@@ -11,6 +22,7 @@ export interface Design {
   heightInches: number;
   roofPitch: number;
   roofType: RoofType;
+  openings: Opening[];
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +37,7 @@ export interface CreateDesignRequest {
   heightInches?: number;
   roofPitch?: number;
   roofType?: RoofType;
+  openings?: Opening[];
 }
 
 export interface UpdateDesignRequest {
@@ -37,6 +50,7 @@ export interface UpdateDesignRequest {
   heightInches?: number;
   roofPitch?: number;
   roofType?: RoofType;
+  openings?: Opening[];
 }
 
 export interface BomItem {
@@ -50,6 +64,22 @@ export interface BomItem {
 export interface BomResponse {
   designId: string;
   items: BomItem[];
+}
+
+export interface CostBomItem {
+  material: string;
+  dimensions: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface CostResponse {
+  designId: string;
+  items: CostBomItem[];
+  grandTotal: number;
 }
 
 export interface DesignVersion {

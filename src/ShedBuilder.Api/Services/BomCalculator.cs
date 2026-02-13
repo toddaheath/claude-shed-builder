@@ -25,9 +25,10 @@ public class BomCalculator : IBomCalculator
         var roofPitch = (double)design.RoofPitch;
 
         items.AddRange(CalculateFloor(widthInches, depthInches));
-        items.AddRange(CalculateWalls(widthInches, depthInches, heightInches));
+        items.AddRange(CalculateWalls(widthInches, depthInches, heightInches, design.Openings));
         items.AddRange(CalculateRoof(widthInches, depthInches, roofPitch, design.RoofType));
         items.AddRange(CalculateHardware(widthInches, depthInches, heightInches, design.RoofType));
+        items.AddRange(CalculateOpenings(design.Openings));
 
         return new BomResponse
         {
@@ -76,7 +77,7 @@ public class BomCalculator : IBomCalculator
         return items;
     }
 
-    private List<BomItem> CalculateWalls(double widthIn, double depthIn, double heightIn)
+    private List<BomItem> CalculateWalls(double widthIn, double depthIn, double heightIn, List<Opening> openings)
     {
         var items = new List<BomItem>();
 
@@ -114,9 +115,10 @@ public class BomCalculator : IBomCalculator
             Category = "Walls"
         });
 
-        // 7/16" OSB wall sheathing
-        var wallArea = 2 * (widthIn + depthIn) * heightIn / 144.0;
-        var osbSheets = (int)Math.Ceiling(wallArea / 32.0);
+        // 7/16" OSB wall sheathing (subtract openings)
+        var openingArea = openings.Sum(o => (double)o.WidthInches * o.HeightInches) / 144.0;
+        var wallArea = 2 * (widthIn + depthIn) * heightIn / 144.0 - openingArea;
+        var osbSheets = (int)Math.Ceiling(Math.Max(wallArea, 0) / 32.0);
         items.Add(new BomItem
         {
             Material = "OSB sheathing",
@@ -275,6 +277,51 @@ public class BomCalculator : IBomCalculator
             Quantity = Math.Max(lbsOfNails, 5),
             Unit = "lbs",
             Category = "Hardware"
+        });
+
+        return items;
+    }
+
+    private List<BomItem> CalculateOpenings(List<Opening> openings)
+    {
+        var items = new List<BomItem>();
+        if (openings.Count == 0) return items;
+
+        var doorCount = openings.Count(o => o.Type == OpeningType.Door);
+        var windowCount = openings.Count(o => o.Type == OpeningType.Window);
+
+        if (doorCount > 0)
+        {
+            items.Add(new BomItem
+            {
+                Material = "Pre-hung door",
+                Dimensions = "36\" × 80\"",
+                Quantity = doorCount,
+                Unit = "units",
+                Category = "Openings"
+            });
+        }
+
+        if (windowCount > 0)
+        {
+            items.Add(new BomItem
+            {
+                Material = "Window unit",
+                Dimensions = "36\" × 24\"",
+                Quantity = windowCount,
+                Unit = "units",
+                Category = "Openings"
+            });
+        }
+
+        // Headers for each opening
+        items.Add(new BomItem
+        {
+            Material = "Header lumber",
+            Dimensions = "2×8",
+            Quantity = openings.Count * 2,
+            Unit = "pieces",
+            Category = "Openings"
         });
 
         return items;

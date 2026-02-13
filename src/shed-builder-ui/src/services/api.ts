@@ -4,6 +4,7 @@ import type {
   CreateDesignRequest,
   UpdateDesignRequest,
   BomResponse,
+  CostResponse,
   DesignVersion,
 } from '../types';
 
@@ -13,7 +14,7 @@ const client = axios.create({
 
 export const api = {
   listDesigns: () =>
-    client.get<Design[]>('/designs').then((r) => r.data),
+    client.get<{ items: Design[]; totalCount: number }>('/designs').then((r) => r.data),
 
   getDesign: (id: string) =>
     client.get<Design>(`/designs/${id}`).then((r) => r.data),
@@ -30,10 +31,20 @@ export const api = {
   getBom: (id: string) =>
     client.get<BomResponse>(`/designs/${id}/bom`).then((r) => r.data),
 
+  getCost: (id: string) =>
+    client.get<CostResponse>(`/designs/${id}/cost`).then((r) => r.data),
+
   downloadStl: (id: string, name: string) => {
     const link = document.createElement('a');
     link.href = `/api/designs/${id}/stl`;
     link.download = `${name}.stl`;
+    link.click();
+  },
+
+  downloadPdf: (id: string, name: string) => {
+    const link = document.createElement('a');
+    link.href = `/api/designs/${id}/pdf`;
+    link.download = `${name}.pdf`;
     link.click();
   },
 

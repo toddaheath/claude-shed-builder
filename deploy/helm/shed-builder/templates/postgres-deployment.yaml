@@ -30,7 +30,10 @@ spec:
             - name: POSTGRES_USER
               value: {{ .Values.postgres.username }}
             - name: POSTGRES_PASSWORD
-              value: {{ .Values.postgres.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "shed-builder.fullname" . }}-db
+                  key: postgres-password
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
