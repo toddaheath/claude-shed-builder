@@ -50,3 +50,42 @@ Claude Code: When starting a new conversation, read this file to understand what
 
 ### Command 5: Switch to main and pull latest
 **Result**: Already on `main` and up to date (merge had already updated the local branch).
+
+---
+
+## Session 3 — 2026-02-20
+
+### Command 1: Switch deploy workflows from KUBE_CONFIG to Azure OIDC auth
+**Prompt summary**: Stop storing kubeconfig in secrets. Use Azure subscription ID, tenant ID, and client ID to authenticate instead. The dev environment should also use AKS cluster name, resource group, ACR login server, and storage account name.
+
+**Result**: Updated all three deploy workflows (`deploy-dev.yml`, `deploy-prod.yml`, `deploy.yml`):
+- Replaced `Set kubeconfig` step (base64-decoded `KUBE_CONFIG` secret) with `azure/login@v2` + `azure/aks-set-context@v3`
+- Added `id-token: write` permission to all workflows for OIDC token exchange
+- Dev workflow switches container registry from GHCR to ACR (`vars.ACR_LOGIN_SERVER`), uses `vars.ACR_NAME` for `az acr login`, and passes `vars.STORAGE_ACCOUNT_NAME` to Helm
+- Fixed `az acr login --name` to use registry name not login server URL
+
+### Command 2: Create a branch, commit, create required secrets/variables in GitHub, create a PR
+**Result**:
+- Created branch `chore/azure-oidc-auth`, committed changes, opened PR #5
+- Set repo-level secrets: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID`
+- Dev environment variables (`AKS_CLUSTER_NAME`, `RESOURCE_GROUP`, `ACR_LOGIN_SERVER`, `ACR_NAME`, `STORAGE_ACCOUNT_NAME`) required a fine-grained PAT with Variables + Environments permissions — set after user provided PAT
+
+### Command 3: Merge the PR
+**Result**: Merged PR #5 into `main` (fast-forward), deleted `chore/azure-oidc-auth` branch.
+
+### Command 4: Set up federated credentials in Azure
+**Result**: Created three federated credentials on app registration `4f9acb18-3bf6-442c-9709-8612d2647a56` using `az ad app federated-credential create`:
+- `github-shedbuilder-env-dev` → `repo:toddaheath/claude-shed-builder:environment:dev`
+- `github-shedbuilder-env-staging` → `repo:toddaheath/claude-shed-builder:environment:staging`
+- `github-shedbuilder-env-production` → `repo:toddaheath/claude-shed-builder:environment:production`
+
+### Command 5: Set GitHub secrets and variables
+**Result**: Set repo-level secrets (`AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID`) using the keyring OAuth token. Set dev environment variables (`AKS_CLUSTER_NAME`, `RESOURCE_GROUP`, `ACR_LOGIN_SERVER`, `ACR_NAME`, `STORAGE_ACCOUNT_NAME`) using a fine-grained PAT provided by the user (required Variables + Environments read/write permissions).
+
+### Command 6: Fix failing UI lint
+**Prompt summary**: Check the UI lint issue and create a PR.
+
+**Result**: Found 4 `react-hooks/refs` errors — `canUndo` and `canRedo` were derived from `ref.current.length` during render in both `useUndoRedo.ts` and `App.tsx`. Fixed by tracking `canUndo`/`canRedo` as state values updated in `push`, `undo`, `redo`, and `reset` callbacks. Removed the `undoRedoVersion` workaround counter from `App.tsx`. Created branch `fix/ui-lint-ref-during-render`, opened PR #6.
+
+### Command 7: Update documentation, commit, merge PR #6
+**Result**: No documentation was out of date (`CLAUDE.md` has no references to auth or undo/redo; UI README is default Vite scaffold). Merged PR #6 into `main` (fast-forward), deleted branch.
