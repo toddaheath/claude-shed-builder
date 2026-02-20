@@ -21,3 +21,32 @@ Claude Code: When starting a new conversation, read this file to understand what
 **Prompt summary**: Add a readme-style file listing all commands given, recognizable by Claude Code in future contexts. Then commit and push everything to GitHub.
 
 **Result**: Created COMMAND_HISTORY.md (this file), committed and pushed all project files.
+
+---
+
+## Session 2 — 2026-02-20
+
+### Command 1: Configure build and release actions/pipelines similar to claude-optimization-heuristics
+**Prompt summary**: Align the GitHub Actions workflows in this repo with the patterns used in `~/Documents/GitHub/claude-optimization-heuristics`. Create a branch and push the changes. Use `shed-builder` as the short name for components when deploying to Azure.
+
+**Result**: Created branch `chore/align-ci-cd-pipelines` with the following changes:
+- **ci.yml**: Added `workflow_call` (reusable), concurrency group, NuGet package cache, postgres 16 service container, split unit/integration test runs with TRX result artifacts, bumped Node to 22, added frontend build artifact upload
+- **release.yml**: Added `ci` job (reusable workflow call) gating `build-and-push` and `helm-package`; switched to `docker/metadata-action` for semver tagging
+- **deploy.yml**: Removed `workflow_run` trigger (replaced by `deploy-prod.yml`); kept `workflow_dispatch` only for manual rollouts
+- **deploy-dev.yml** (new): Auto-deploys non-`main` branches to `dev` namespace — CI → GHCR build (`dev-<sha>`) → Helm upgrade
+- **deploy-prod.yml** (new): Auto-deploys `main` to `production` — CI → GHCR build (`prod-<sha>` + `:latest`) → Helm upgrade
+
+### Command 2: Create a PR
+**Result**: Opened PR #3 — "Align CI/CD pipelines with optimization-heuristics patterns".
+
+### Command 3: Create required GitHub variables and secrets for the Actions
+**Result**: Created four GitHub environments (`dev`, `prod`, `staging`, `production`) and populated:
+- Secrets `KUBE_CONFIG` and `DB_PASSWORD` in `dev`, `staging`, and `production` environments (value: TBD — must be set manually)
+- Variable `PRODUCTION_HOST` in `production` environment (value: TBD — must be set manually)
+- `prod` environment requires no custom secrets (only the automatic `GITHUB_TOKEN`)
+
+### Command 4: Merge the PR
+**Result**: Merged PR #3 into `main` (merge commit), deleted `chore/align-ci-cd-pipelines` branch.
+
+### Command 5: Switch to main and pull latest
+**Result**: Already on `main` and up to date (merge had already updated the local branch).
