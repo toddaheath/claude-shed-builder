@@ -11,10 +11,7 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
-
-env:
-  REGISTRY: ghcr.io
+  id-token: write  # required for OIDC authentication with Azure
 
 jobs:
   ci:
@@ -36,12 +33,15 @@ jobs:
         id: meta
         run: echo "tag=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to ACR
+        run: az acr login --name ${{ vars.ACR_LOGIN_SERVER }}
 
       - name: Build and push API image
         uses: docker/build-push-action@v6
@@ -49,7 +49,7 @@ jobs:
           context: .
           file: Dockerfile.api
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api:${{ steps.meta.outputs.tag }}
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/shed-builder-api:${{ steps.meta.outputs.tag }}
 
       - name: Build and push UI image
         uses: docker/build-push-action@v6
@@ -57,7 +57,7 @@ jobs:
           context: .
           file: Dockerfile.ui
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:${{ steps.meta.outputs.tag }}
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/shed-builder-ui:${{ steps.meta.outputs.tag }}
 
   deploy:
     name: Deploy to Dev
@@ -71,19 +71,27 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@v4
 
-      - name: Configure kubectl
-        uses: azure/setup-kubectl@v4
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set kubeconfig
-        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+      - name: Get AKS credentials
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ vars.RESOURCE_GROUP }}
+          cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
 
       - name: Deploy with Helm
         run: |
           helm upgrade --install shed-builder deploy/helm/shed-builder \
             --namespace dev --create-namespace \
-            --set api.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api \
+            --set api.image.repository=${{ vars.ACR_LOGIN_SERVER }}/shed-builder-api \
             --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
-            --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
+            --set ui.image.repository=${{ vars.ACR_LOGIN_SERVER }}/shed-builder-ui \
             --set ui.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
+            --set storage.accountName=${{ vars.STORAGE_ACCOUNT_NAME }} \
             --wait --timeout 5m
