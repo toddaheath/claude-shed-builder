@@ -5,18 +5,46 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
     name: Backend Build & Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: shed_builder_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore dependencies
         run: dotnet restore ShedBuilder.sln
@@ -24,30 +52,58 @@ jobs:
       - name: Build
         run: dotnet build ShedBuilder.sln --no-restore --configuration Release
 
-      - name: Test with coverage
-        run: dotnet test ShedBuilder.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+      - name: Run unit tests
+        run: >
+          dotnet test ShedBuilder.sln
+          --no-build
+          --configuration Release
+          --filter "FullyQualifiedName!~Integration"
+          --logger "trx;LogFileName=unit-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./test-results
+
+      - name: Run integration tests
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=shed_builder_test;Username=postgres;Password=postgres"
+        run: >
+          dotnet test ShedBuilder.sln
+          --no-build
+          --configuration Release
+          --filter "FullyQualifiedName~Integration"
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory ./test-results
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./test-results/
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: backend-coverage
-          path: coverage/**/coverage.cobertura.xml
+          path: test-results/**/coverage.cobertura.xml
           retention-days: 14
 
   frontend:
-    name: Frontend Build
+    name: Frontend Build & Lint
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: src/shed-builder-ui
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 22
+          cache: npm
           cache-dependency-path: src/shed-builder-ui/package-lock.json
 
       - name: Install dependencies
@@ -65,9 +121,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-dist
+          path: src/shed-builder-ui/dist/
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         include:
@@ -75,6 +138,7 @@ jobs:
             image: shed-builder-api
           - dockerfile: Dockerfile.ui
             image: shed-builder-ui
+
     steps:
       - uses: actions/checkout@v4
 
