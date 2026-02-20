@@ -12,6 +12,8 @@ interface UndoRedoState<T> {
 
 export function useUndoRedo<T>(initialState: T, maxHistory = 50): UndoRedoState<T> {
   const [current, setCurrent] = useState(initialState);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const undoStack = useRef<T[]>([]);
   const redoStack = useRef<T[]>([]);
 
@@ -24,6 +26,8 @@ export function useUndoRedo<T>(initialState: T, maxHistory = 50): UndoRedoState<
       redoStack.current = [];
       return state;
     });
+    setCanUndo(true);
+    setCanRedo(false);
   }, [maxHistory]);
 
   const undo = useCallback(() => {
@@ -33,6 +37,8 @@ export function useUndoRedo<T>(initialState: T, maxHistory = 50): UndoRedoState<
         redoStack.current.push(c);
         return prev;
       });
+      setCanUndo(undoStack.current.length > 0);
+      setCanRedo(true);
       return prev;
     }
     return undefined;
@@ -45,6 +51,8 @@ export function useUndoRedo<T>(initialState: T, maxHistory = 50): UndoRedoState<
         undoStack.current.push(c);
         return next;
       });
+      setCanUndo(true);
+      setCanRedo(redoStack.current.length > 0);
       return next;
     }
     return undefined;
@@ -54,12 +62,14 @@ export function useUndoRedo<T>(initialState: T, maxHistory = 50): UndoRedoState<
     undoStack.current = [];
     redoStack.current = [];
     setCurrent(state);
+    setCanUndo(false);
+    setCanRedo(false);
   }, []);
 
   return {
     current,
-    canUndo: undoStack.current.length > 0,
-    canRedo: redoStack.current.length > 0,
+    canUndo,
+    canRedo,
     push,
     undo,
     redo,

@@ -80,7 +80,8 @@ export default function App() {
   // Undo/redo stacks
   const undoStackRef = useRef<Design[]>([]);
   const redoStackRef = useRef<Design[]>([]);
-  const [undoRedoVersion, setUndoRedoVersion] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   // Sync localDesign when currentDesign changes from API
   const activeDesign = localDesign?.id === currentDesign?.id ? localDesign : currentDesign;
@@ -107,7 +108,8 @@ export default function App() {
     undoStackRef.current.push(design);
     if (undoStackRef.current.length > 50) undoStackRef.current.shift();
     redoStackRef.current = [];
-    setUndoRedoVersion(v => v + 1);
+    setCanUndo(true);
+    setCanRedo(false);
   }, []);
 
   const handleDesignChange = useCallback(
@@ -127,7 +129,8 @@ export default function App() {
       redoStackRef.current.push(activeDesign);
       setLocalDesign(prev);
       setCurrentDesign(prev);
-      setUndoRedoVersion(v => v + 1);
+      setCanUndo(undoStackRef.current.length > 0);
+      setCanRedo(true);
     }
   }, [activeDesign, setCurrentDesign]);
 
@@ -137,7 +140,8 @@ export default function App() {
       undoStackRef.current.push(activeDesign);
       setLocalDesign(next);
       setCurrentDesign(next);
-      setUndoRedoVersion(v => v + 1);
+      setCanUndo(true);
+      setCanRedo(redoStackRef.current.length > 0);
     }
   }, [activeDesign, setCurrentDesign]);
 
@@ -162,7 +166,8 @@ export default function App() {
       setLocalDesign(null);
       undoStackRef.current = [];
       redoStackRef.current = [];
-      setUndoRedoVersion(v => v + 1);
+      setCanUndo(false);
+      setCanRedo(false);
       loadDesign(id);
     },
     [loadDesign]
@@ -174,11 +179,6 @@ export default function App() {
     },
     [createDesign]
   );
-
-  const canUndo = undoStackRef.current.length > 0;
-  const canRedo = redoStackRef.current.length > 0;
-  // Reference undoRedoVersion to trigger re-render
-  void undoRedoVersion;
 
   return (
     <ThemeProvider theme={theme}>
