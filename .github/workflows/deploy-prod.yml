@@ -1,0 +1,95 @@
+name: Deploy to Prod
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  build-and-push:
+    name: Build & Push Images
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: prod
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=prod-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api:latest
+
+      - name: Build and push UI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.ui
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:latest
+
+  deploy:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set kubeconfig
+        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install shed-builder deploy/helm/shed-builder \
+            --namespace production --create-namespace \
+            --set api.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api \
+            --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
+            --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
+            --set ui.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
+            --set postgres.password=${{ secrets.DB_PASSWORD }} \
+            --set ingress.enabled=true \
+            --set ingress.host=${{ vars.PRODUCTION_HOST }} \
+            --wait --timeout 5m
