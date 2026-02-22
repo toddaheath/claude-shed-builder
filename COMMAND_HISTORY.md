@@ -89,3 +89,19 @@ Claude Code: When starting a new conversation, read this file to understand what
 
 ### Command 7: Update documentation, commit, merge PR #6
 **Result**: No documentation was out of date (`CLAUDE.md` has no references to auth or undo/redo; UI README is default Vite scaffold). Merged PR #6 into `main` (fast-forward), deleted branch.
+
+---
+
+## Session 4 — 2026-02-22
+
+### Command 1: Investigate why the SPA is not getting deployed to dev and prod
+**Result**: Diagnosed two distinct issues:
+
+**Dev** — All three pods (api, postgres, ui) were timing out after 5 minutes with `Available: 0/1`. Root cause: AKS kubelet managed identity had no role assignments and could not pull images from ACR. Fixed by running `az aks update --attach-acr acrheathrobotics` on `aks-heathrobotics-dev`.
+
+**Prod** — Deployment failed immediately at `Get AKS credentials` with `Error: Input required and not supplied: resource-group`. Root cause: `production` GitHub environment was missing `RESOURCE_GROUP` and `AKS_CLUSTER_NAME` variables (only `dev` had been populated). Fixed by setting `RESOURCE_GROUP=rg-heathrobotics-prod` and `AKS_CLUSTER_NAME=aks-heathrobotics-prod` in the `production` environment, and granting ACR pull to the prod cluster (`az aks update --attach-acr acrheathrobotics` on `aks-heathrobotics-prod`).
+
+**Staging** — Same missing variables discovered proactively. No staging cluster exists; set `RESOURCE_GROUP=rg-heathrobotics-dev` and `AKS_CLUSTER_NAME=aks-heathrobotics-dev` so staging shares the dev cluster (different namespace).
+
+### Command 2: Update command history
+**Result**: Added session 4 entries to COMMAND_HISTORY.md, committed and merged via PR.
