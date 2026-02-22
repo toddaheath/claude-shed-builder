@@ -25,5 +25,8 @@ spec:
           imagePullPolicy: {{ .Values.ui.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.ui.port }}
+          env:
+            - name: API_HOST
+              value: {{ include "shed-builder.fullname" . }}-api
           resources:
             {{- toYaml .Values.ui.resources | nindent 12 }}

@@ -34,6 +34,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "shed-builder.fullname" . }}-db
                   key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
