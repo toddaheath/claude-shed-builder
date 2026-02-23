@@ -1,0 +1,7 @@
+api:
+  corsAllowedOrigins: "https://ballistics-calc.dev.heathrobotics.io"
+
+ingress:
+  enabled: true
+  apiHost: shed-builder-api.dev.heathrobotics.io
+  uiHost: ballistics-calc.dev.heathrobotics.io

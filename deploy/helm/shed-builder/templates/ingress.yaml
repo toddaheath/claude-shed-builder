@@ -5,19 +5,30 @@ metadata:
   name: {{ include "shed-builder.fullname" . }}
   labels:
     {{- include "shed-builder.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- end }}
   rules:
-    - host: {{ .Values.ingress.host }}
+    - host: {{ .Values.ingress.apiHost }}
       http:
         paths:
-          - path: /api
+          - path: /
             pathType: Prefix
             backend:
               service:
                 name: {{ include "shed-builder.fullname" . }}-api
                 port:
                   number: {{ .Values.api.port }}
+    - host: {{ .Values.ingress.uiHost }}
+      http:
+        paths:
           - path: /
             pathType: Prefix
             backend:

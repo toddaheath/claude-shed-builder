@@ -5,6 +5,7 @@ api:
     pullPolicy: IfNotPresent
   replicas: 1
   port: 8080
+  corsAllowedOrigins: ""
   resources:
     requests:
       cpu: 100m
@@ -49,4 +50,7 @@ autoscaling:
 ingress:
   enabled: false
   className: nginx
-  host: shed-builder.local
+  annotations: {}
+  apiHost: shed-builder-api.local
+  uiHost: shed-builder.local
+  tls: []

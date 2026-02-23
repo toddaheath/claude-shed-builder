@@ -27,3 +27,11 @@ spec:
             - containerPort: {{ .Values.ui.port }}
           resources:
             {{- toYaml .Values.ui.resources | nindent 12 }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "shed-builder.fullname" . }}-nginx

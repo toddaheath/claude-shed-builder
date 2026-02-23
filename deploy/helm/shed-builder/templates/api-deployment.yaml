@@ -35,6 +35,8 @@ spec:
               value: "Host={{ include "shed-builder.fullname" . }}-postgres;Database={{ .Values.postgres.database }};Username={{ .Values.postgres.username }};Password=$(DB_PASSWORD)"
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
+            - name: Cors__AllowedOrigins
+              value: {{ .Values.api.corsAllowedOrigins | quote }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
           livenessProbe:
