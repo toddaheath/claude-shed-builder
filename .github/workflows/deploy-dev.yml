@@ -121,6 +121,14 @@ jobs:
           resource-group: ${{ vars.RESOURCE_GROUP }}
           cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
 
+      - name: Roll back stuck Helm release
+        run: |
+          STATUS=$(helm status shed-builder --namespace dev -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
+          if [[ "$STATUS" == "pending-upgrade" || "$STATUS" == "pending-install" || "$STATUS" == "pending-rollback" ]]; then
+            echo "Release is stuck in status: $STATUS — rolling back"
+            helm rollback shed-builder --namespace dev || helm uninstall shed-builder --namespace dev || true
+          fi
+
       - name: Deploy with Helm
         run: |
           helm upgrade --install shed-builder deploy/helm/shed-builder \
@@ -130,4 +138,5 @@ jobs:
             --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
             --set storage.accountName=${{ vars.STORAGE_ACCOUNT_NAME }} \
+            --cleanup-on-fail \
             --wait --timeout 5m
