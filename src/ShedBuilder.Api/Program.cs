@@ -9,8 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, config) => config
     .ReadFrom.Configuration(context.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console(outputTemplate:
-        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"));
+    .WriteTo.Console(new Serilog.Formatting.Compact.CompactJsonFormatter()));
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
