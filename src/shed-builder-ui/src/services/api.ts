@@ -8,8 +8,10 @@ import type {
   DesignVersion,
 } from '../types';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
+
 const client = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
 });
 
 export const api = {
@@ -36,14 +38,14 @@ export const api = {
 
   downloadStl: (id: string, name: string) => {
     const link = document.createElement('a');
-    link.href = `/api/designs/${id}/stl`;
+    link.href = `${API_BASE}/designs/${id}/stl`;
     link.download = `${name}.stl`;
     link.click();
   },
 
   downloadPdf: (id: string, name: string) => {
     const link = document.createElement('a');
-    link.href = `/api/designs/${id}/pdf`;
+    link.href = `${API_BASE}/designs/${id}/pdf`;
     link.download = `${name}.pdf`;
     link.click();
   },
