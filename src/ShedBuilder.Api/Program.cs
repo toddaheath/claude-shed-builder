@@ -7,9 +7,7 @@ using ShedBuilder.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, config) => config
-    .ReadFrom.Configuration(context.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console(new Serilog.Formatting.Compact.CompactJsonFormatter()));
+    .ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
