@@ -15,6 +15,7 @@ api:
       memory: 512Mi
 
 ui:
+  enabled: true
   image:
     repository: shed-builder-ui
     tag: latest

@@ -26,6 +26,7 @@ spec:
                 name: {{ include "shed-builder.fullname" . }}-api
                 port:
                   number: {{ .Values.api.port }}
+    {{- if .Values.ui.enabled }}
     - host: {{ .Values.ingress.uiHost }}
       http:
         paths:
@@ -36,4 +37,5 @@ spec:
                 name: {{ include "shed-builder.fullname" . }}-ui
                 port:
                   number: {{ .Values.ui.port }}
+    {{- end }}
 {{- end }}

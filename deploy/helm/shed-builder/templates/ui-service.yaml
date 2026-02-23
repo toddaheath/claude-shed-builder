@@ -1,3 +1,4 @@
+{{- if .Values.ui.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,3 +15,4 @@ spec:
     app.kubernetes.io/name: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: ui
+{{- end }}
