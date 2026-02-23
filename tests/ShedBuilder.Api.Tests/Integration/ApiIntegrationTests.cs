@@ -49,7 +49,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
 
     private async Task<(UserResponse User, HttpClient Client)> CreateAuthenticatedUser(string name, string email)
     {
-        var registerResponse = await _client.PostAsJsonAsync("/api/users/register",
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/users/register",
             new RegisterUserRequest { Name = name, Email = email }, JsonOptions);
         var user = await ReadJson<UserResponse>(registerResponse.Content);
         _client.DefaultRequestHeaders.Remove("X-Api-Key");
@@ -60,7 +60,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     [Fact]
     public async Task RegisterUser_ReturnsApiKey()
     {
-        var response = await _client.PostAsJsonAsync("/api/users/register",
+        var response = await _client.PostAsJsonAsync("/api/v1/users/register",
             new RegisterUserRequest { Name = "Test", Email = $"reg-{Guid.NewGuid()}@test.com" }, JsonOptions);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
@@ -73,7 +73,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     public async Task UnauthorizedRequest_Returns401()
     {
         _client.DefaultRequestHeaders.Remove("X-Api-Key");
-        var response = await _client.GetAsync("/api/designs");
+        var response = await _client.GetAsync("/api/v1/designs");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -82,7 +82,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     {
         _client.DefaultRequestHeaders.Remove("X-Api-Key");
         _client.DefaultRequestHeaders.Add("X-Api-Key", Guid.NewGuid().ToString());
-        var response = await _client.GetAsync("/api/designs");
+        var response = await _client.GetAsync("/api/v1/designs");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -101,14 +101,14 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
             RoofType = RoofType.Gable,
         };
 
-        var createResponse = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var design = await ReadJson<DesignResponse>(createResponse.Content);
         Assert.NotNull(design);
         Assert.Equal("Integration Shed", design.Name);
 
-        var getResponse = await _client.GetAsync($"/api/designs/{design.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/designs/{design.Id}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
         var fetched = await ReadJson<DesignResponse>(getResponse.Content);
@@ -121,11 +121,11 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         await CreateAuthenticatedUser("Update", $"update-{Guid.NewGuid()}@test.com");
 
         var create = new CreateDesignRequest { Name = "Update Test" };
-        var createResponse = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         var design = await ReadJson<DesignResponse>(createResponse.Content);
 
         var update = new UpdateDesignRequest { Name = "Updated Name", WidthFeet = 15 };
-        var updateResponse = await _client.PutAsJsonAsync($"/api/designs/{design!.Id}", update, JsonOptions);
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/designs/{design!.Id}", update, JsonOptions);
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
 
         var updated = await ReadJson<DesignResponse>(updateResponse.Content);
@@ -139,13 +139,13 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         await CreateAuthenticatedUser("Delete", $"delete-{Guid.NewGuid()}@test.com");
 
         var create = new CreateDesignRequest { Name = "Delete Me" };
-        var createResponse = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         var design = await ReadJson<DesignResponse>(createResponse.Content);
 
-        var deleteResponse = await _client.DeleteAsync($"/api/designs/{design!.Id}");
+        var deleteResponse = await _client.DeleteAsync($"/api/v1/designs/{design!.Id}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-        var getResponse = await _client.GetAsync($"/api/designs/{design.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/designs/{design.Id}");
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
@@ -163,10 +163,10 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
             RoofPitch = 4,
             RoofType = RoofType.Gable,
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         var design = await ReadJson<DesignResponse>(createResponse.Content);
 
-        var bomResponse = await _client.GetAsync($"/api/designs/{design!.Id}/bom");
+        var bomResponse = await _client.GetAsync($"/api/v1/designs/{design!.Id}/bom");
         Assert.Equal(HttpStatusCode.OK, bomResponse.StatusCode);
 
         var bom = await ReadJson<BomResponse>(bomResponse.Content);
@@ -187,10 +187,10 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
             HeightFeet = 8,
             RoofPitch = 4,
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         var design = await ReadJson<DesignResponse>(createResponse.Content);
 
-        var stlResponse = await _client.GetAsync($"/api/designs/{design!.Id}/stl");
+        var stlResponse = await _client.GetAsync($"/api/v1/designs/{design!.Id}/stl");
         Assert.Equal(HttpStatusCode.OK, stlResponse.StatusCode);
         Assert.Equal("application/octet-stream", stlResponse.Content.Headers.ContentType!.MediaType);
 
@@ -204,22 +204,22 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         await CreateAuthenticatedUser("Versions", $"versions-{Guid.NewGuid()}@test.com");
 
         var create = new CreateDesignRequest { Name = "Version Test", WidthFeet = 8 };
-        var createResponse = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         var design = await ReadJson<DesignResponse>(createResponse.Content);
         var id = design!.Id;
 
-        var saveResponse = await _client.PostAsJsonAsync($"/api/designs/{id}/versions",
+        var saveResponse = await _client.PostAsJsonAsync($"/api/v1/designs/{id}/versions",
             new CreateVersionRequest { Label = "Initial" }, JsonOptions);
         Assert.Equal(HttpStatusCode.Created, saveResponse.StatusCode);
 
-        await _client.PutAsJsonAsync($"/api/designs/{id}", new UpdateDesignRequest { WidthFeet = 20 }, JsonOptions);
+        await _client.PutAsJsonAsync($"/api/v1/designs/{id}", new UpdateDesignRequest { WidthFeet = 20 }, JsonOptions);
 
-        var listResponse = await _client.GetAsync($"/api/designs/{id}/versions");
+        var listResponse = await _client.GetAsync($"/api/v1/designs/{id}/versions");
         var versions = await ReadJson<List<VersionResponse>>(listResponse.Content);
         Assert.Single(versions!);
         Assert.Equal("Initial", versions[0].Label);
 
-        var restoreResponse = await _client.PostAsync($"/api/designs/{id}/versions/{versions[0].Id}/restore", null);
+        var restoreResponse = await _client.PostAsync($"/api/v1/designs/{id}/versions/{versions[0].Id}/restore", null);
         Assert.Equal(HttpStatusCode.OK, restoreResponse.StatusCode);
 
         var restored = await ReadJson<DesignResponse>(restoreResponse.Content);
@@ -231,7 +231,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     {
         await CreateAuthenticatedUser("NotFound", $"notfound-{Guid.NewGuid()}@test.com");
 
-        var response = await _client.GetAsync($"/api/designs/{Guid.NewGuid()}");
+        var response = await _client.GetAsync($"/api/v1/designs/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -240,10 +240,10 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     {
         await CreateAuthenticatedUser("ListUser", $"list-{Guid.NewGuid()}@test.com");
 
-        await _client.PostAsJsonAsync("/api/designs", new CreateDesignRequest { Name = "ListA" }, JsonOptions);
-        await _client.PostAsJsonAsync("/api/designs", new CreateDesignRequest { Name = "ListB" }, JsonOptions);
+        await _client.PostAsJsonAsync("/api/v1/designs", new CreateDesignRequest { Name = "ListA" }, JsonOptions);
+        await _client.PostAsJsonAsync("/api/v1/designs", new CreateDesignRequest { Name = "ListB" }, JsonOptions);
 
-        var response = await _client.GetAsync("/api/designs");
+        var response = await _client.GetAsync("/api/v1/designs");
         var paginated = await ReadJson<PaginatedResponse<DesignResponse>>(response.Content);
         Assert.True(paginated!.TotalCount >= 2);
         Assert.True(paginated.Items.Count >= 2);
@@ -254,10 +254,10 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     {
         await CreateAuthenticatedUser("SearchUser", $"search-{Guid.NewGuid()}@test.com");
 
-        await _client.PostAsJsonAsync("/api/designs", new CreateDesignRequest { Name = "Alpha Shed" }, JsonOptions);
-        await _client.PostAsJsonAsync("/api/designs", new CreateDesignRequest { Name = "Beta Barn" }, JsonOptions);
+        await _client.PostAsJsonAsync("/api/v1/designs", new CreateDesignRequest { Name = "Alpha Shed" }, JsonOptions);
+        await _client.PostAsJsonAsync("/api/v1/designs", new CreateDesignRequest { Name = "Beta Barn" }, JsonOptions);
 
-        var response = await _client.GetAsync("/api/designs?search=shed");
+        var response = await _client.GetAsync("/api/v1/designs?search=shed");
         var paginated = await ReadJson<PaginatedResponse<DesignResponse>>(response.Content);
         Assert.Equal(1, paginated!.TotalCount);
         Assert.Equal("Alpha Shed", paginated.Items[0].Name);
@@ -294,7 +294,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
             RoofPitch = 4,
         };
 
-        var response = await _client.PostAsJsonAsync("/api/designs", create, JsonOptions);
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -303,7 +303,7 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     {
         var (user, _) = await CreateAuthenticatedUser("MeUser", $"me-{Guid.NewGuid()}@test.com");
 
-        var response = await _client.GetAsync("/api/users/me");
+        var response = await _client.GetAsync("/api/v1/users/me");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var me = await ReadJson<UserResponse>(response.Content);

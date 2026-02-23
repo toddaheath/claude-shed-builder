@@ -8,7 +8,7 @@ public class ApiKeyAuthMiddleware
     private readonly RequestDelegate _next;
     private static readonly HashSet<string> ExcludedPaths = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/api/users/register",
+        "/api/v1/users/register",
         "/health/live",
         "/health/ready",
     };
