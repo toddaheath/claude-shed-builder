@@ -68,7 +68,7 @@ jobs:
     name: Deploy SPA to Storage
     needs: ci
     runs-on: ubuntu-latest
-    environment: prod
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
