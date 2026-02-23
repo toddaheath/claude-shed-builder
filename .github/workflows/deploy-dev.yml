@@ -51,14 +51,6 @@ jobs:
           push: true
           tags: ${{ vars.ACR_LOGIN_SERVER }}/shed-builder-api:${{ steps.meta.outputs.tag }}
 
-      - name: Build and push UI image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.ui
-          push: true
-          tags: ${{ vars.ACR_LOGIN_SERVER }}/shed-builder-ui:${{ steps.meta.outputs.tag }}
-
   deploy-spa:
     name: Deploy SPA to Storage
     needs: ci
@@ -136,8 +128,6 @@ jobs:
             -f deploy/helm/shed-builder/values-dev.yaml \
             --set api.image.repository=${{ vars.ACR_LOGIN_SERVER }}/shed-builder-api \
             --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
-            --set ui.image.repository=${{ vars.ACR_LOGIN_SERVER }}/shed-builder-ui \
-            --set ui.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
             --set storage.accountName=${{ vars.STORAGE_ACCOUNT_NAME }} \
             --wait --timeout 5m

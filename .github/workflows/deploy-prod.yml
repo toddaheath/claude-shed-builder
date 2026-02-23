@@ -54,16 +54,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api:${{ steps.meta.outputs.tag }}
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api:latest
 
-      - name: Build and push UI image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.ui
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:${{ steps.meta.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:latest
-
   deploy-spa:
     name: Deploy SPA to Storage
     needs: ci
@@ -141,7 +131,5 @@ jobs:
             -f deploy/helm/shed-builder/values-prod.yaml \
             --set api.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api \
             --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
-            --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
-            --set ui.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
             --wait --timeout 10m

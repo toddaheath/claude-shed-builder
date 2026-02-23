@@ -1,3 +1,6 @@
+ui:
+  enabled: false
+
 api:
   corsAllowedOrigins: "https://shed-builder.heathrobotics.io"
 
