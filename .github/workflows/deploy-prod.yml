@@ -99,12 +99,15 @@ jobs:
 
       - name: Upload SPA to storage account
         run: |
+          STORAGE_KEY=$(az storage account keys list \
+            --account-name stshedbuilderspaprod \
+            --query '[0].value' -o tsv)
           az storage blob upload-batch \
             --account-name stshedbuilderspaprod \
             --destination '$web' \
             --source src/shed-builder-ui/dist/ \
             --overwrite \
-            --auth-mode login
+            --account-key "$STORAGE_KEY"
 
   deploy:
     name: Deploy to Production
