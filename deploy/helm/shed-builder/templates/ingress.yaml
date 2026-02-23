@@ -23,7 +23,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "shed-builder.fullname" . }}-api
+                name: {{ include "shed-builder.fullname" . }}
                 port:
                   number: {{ .Values.api.port }}
     {{- if .Values.ui.enabled }}
