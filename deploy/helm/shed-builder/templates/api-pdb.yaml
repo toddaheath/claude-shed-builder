@@ -1,7 +1,7 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "shed-builder.fullname" . }}-api
+  name: {{ include "shed-builder.fullname" . }}
   labels:
     {{- include "shed-builder.labels" . | nindent 4 }}
     app.kubernetes.io/component: api
