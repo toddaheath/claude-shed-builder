@@ -8,3 +8,9 @@ ingress:
   enabled: true
   apiHost: shed-builder-api.heathrobotics.io
   uiHost: shed-builder.heathrobotics.io
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    - hosts:
+        - shed-builder-api.heathrobotics.io
+      secretName: shed-builder-api-tls
