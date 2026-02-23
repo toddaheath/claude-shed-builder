@@ -64,6 +64,48 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:${{ steps.meta.outputs.tag }}
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui:latest
 
+  deploy-spa:
+    name: Deploy SPA to Storage
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/shed-builder-ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/shed-builder-ui
+        run: npm ci
+
+      - name: Build SPA
+        working-directory: src/shed-builder-ui
+        env:
+          VITE_API_BASE_URL: https://shed-builder-api.heathrobotics.io/api
+        run: npm run build
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload SPA to storage account
+        run: |
+          az storage blob upload-batch \
+            --account-name stshedbuilderspaprod \
+            --destination '$web' \
+            --source src/shed-builder-ui/dist/ \
+            --overwrite \
+            --auth-mode login
+
   deploy:
     name: Deploy to Production
     needs: build-and-push
