@@ -99,4 +99,4 @@ jobs:
             --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
             --set ui.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
-            --wait --timeout 5m
+            --wait --timeout 10m
