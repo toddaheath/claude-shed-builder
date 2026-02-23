@@ -1,0 +1,7 @@
+api:
+  corsAllowedOrigins: "https://shed-builder.heathrobotics.io"
+
+ingress:
+  enabled: true
+  apiHost: shed-builder-api.heathrobotics.io
+  uiHost: shed-builder.heathrobotics.io

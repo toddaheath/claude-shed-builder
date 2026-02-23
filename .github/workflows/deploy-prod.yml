@@ -93,11 +93,10 @@ jobs:
         run: |
           helm upgrade --install shed-builder deploy/helm/shed-builder \
             --namespace production --create-namespace \
+            -f deploy/helm/shed-builder/values-prod.yaml \
             --set api.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-api \
             --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set ui.image.repository=${{ env.REGISTRY }}/${{ github.repository_owner }}/shed-builder-ui \
             --set ui.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
-            --set ingress.enabled=true \
-            --set ingress.host=${{ vars.PRODUCTION_HOST }} \
             --wait --timeout 5m
