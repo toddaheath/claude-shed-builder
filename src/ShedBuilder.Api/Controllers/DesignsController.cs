@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShedBuilder.Api.Data;
@@ -7,7 +8,8 @@ using ShedBuilder.Api.Services;
 namespace ShedBuilder.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class DesignsController : ControllerBase
 {
     private readonly ShedDbContext _db;

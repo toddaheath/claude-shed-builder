@@ -54,7 +54,7 @@ public class ApiKeyAuthMiddlewareTests : IDisposable
         var nextCalled = false;
         var middleware = new ApiKeyAuthMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
 
-        var context = CreateContext("/api/users/register");
+        var context = CreateContext("/api/v1/users/register");
         await middleware.InvokeAsync(context);
 
         Assert.True(nextCalled);

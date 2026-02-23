@@ -74,7 +74,7 @@ jobs:
       - name: Build SPA
         working-directory: src/shed-builder-ui
         env:
-          VITE_API_BASE_URL: https://shed-builder-api.dev.heathrobotics.io/api
+          VITE_API_BASE_URL: https://shed-builder-api.dev.heathrobotics.io/api/v1
         run: npm run build
 
       - name: Azure Login
