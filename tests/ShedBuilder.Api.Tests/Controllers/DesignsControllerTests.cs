@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,7 @@ public class DesignsControllerTests : IDisposable
     private readonly Mock<IPriceService> _priceMock;
     private readonly Mock<IPdfExporter> _pdfMock;
     private readonly DesignsController _controller;
-    private readonly User _testUser;
+    private readonly ApplicationUser _testUser;
 
     public DesignsControllerTests()
     {
@@ -32,28 +33,41 @@ public class DesignsControllerTests : IDisposable
         _controller = new DesignsController(_db, _bomMock.Object, _stlMock.Object,
             _priceMock.Object, _pdfMock.Object);
 
-        _testUser = new User
+        _testUser = new ApplicationUser
         {
             Id = Guid.NewGuid(),
             Name = "Test User",
             Email = "test@example.com",
-            ApiKey = Guid.NewGuid(),
+            UserName = "test@example.com",
             CreatedAt = DateTime.UtcNow,
         };
         _db.Users.Add(_testUser);
         _db.SaveChanges();
 
-        var httpContext = new DefaultHttpContext();
-        httpContext.Items["User"] = _testUser;
         _controller.ControllerContext = new ControllerContext
         {
-            HttpContext = httpContext
+            HttpContext = BuildHttpContextForUser(_testUser)
         };
     }
 
     public void Dispose()
     {
         _db.Dispose();
+    }
+
+    private static DefaultHttpContext BuildHttpContextForUser(ApplicationUser user)
+    {
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email!),
+            new Claim(ClaimTypes.Name, user.Name),
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        var principal = new ClaimsPrincipal(identity);
+        var httpContext = new DefaultHttpContext();
+        httpContext.User = principal;
+        return httpContext;
     }
 
     private static CreateDesignRequest DefaultCreateRequest() => new()
@@ -342,18 +356,21 @@ public class DesignsControllerTests : IDisposable
         var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
 
         // Switch to different user
-        var otherUser = new User
+        var otherUser = new ApplicationUser
         {
             Id = Guid.NewGuid(),
             Name = "Other",
             Email = "other@example.com",
-            ApiKey = Guid.NewGuid(),
+            UserName = "other@example.com",
             CreatedAt = DateTime.UtcNow,
         };
         _db.Users.Add(otherUser);
         await _db.SaveChangesAsync();
 
-        _controller.ControllerContext.HttpContext.Items["User"] = otherUser;
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = BuildHttpContextForUser(otherUser)
+        };
 
         var result = await _controller.Get(id);
         Assert.IsType<NotFoundResult>(result.Result);

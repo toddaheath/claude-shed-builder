@@ -130,26 +130,16 @@ public record PaginatedResponse<T>
     public int PageSize { get; init; }
 }
 
-public record RegisterUserRequest
-{
-    [Required]
-    [MaxLength(200)]
-    public string Name { get; init; } = string.Empty;
+public record RegisterRequest(
+    [Required] string Name,
+    [Required, EmailAddress] string Email,
+    [Required, MinLength(8)] string Password);
 
-    [Required]
-    [MaxLength(200)]
-    [EmailAddress]
-    public string Email { get; init; } = string.Empty;
-}
+public record LoginRequest(
+    [Required, EmailAddress] string Email,
+    [Required] string Password);
 
-public record UserResponse
-{
-    public Guid Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string Email { get; init; } = string.Empty;
-    public Guid ApiKey { get; init; }
-    public DateTime CreatedAt { get; init; }
-}
+public record AuthResponse(string Token, string Name, string Email);
 
 public record CreateVersionRequest
 {

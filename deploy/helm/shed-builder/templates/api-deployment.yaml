@@ -48,6 +48,11 @@ spec:
               value: Production
             - name: Cors__AllowedOrigins
               value: {{ .Values.api.corsAllowedOrigins | quote }}
+            - name: Jwt__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "shed-builder.fullname" . }}-db
+                  key: jwt-secret-key
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
           livenessProbe:

@@ -1,26 +1,22 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ShedBuilder.Api.Models;
 
 namespace ShedBuilder.Api.Data;
 
-public class ShedDbContext : DbContext
+public class ShedDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
     public ShedDbContext(DbContextOptions<ShedDbContext> options) : base(options) { }
 
     public DbSet<Design> Designs => Set<Design>();
     public DbSet<DesignVersion> DesignVersions => Set<DesignVersion>();
-    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ApiKey).IsUnique();
-            entity.HasIndex(e => e.Email).IsUnique();
-        });
+        base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<Design>(entity =>
         {

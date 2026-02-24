@@ -1,12 +1,17 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using ShedBuilder.Api.Data;
-using ShedBuilder.Api.Middleware;
+using ShedBuilder.Api.Models;
 using ShedBuilder.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var config = builder.Configuration;
 
-builder.Host.UseSerilog((context, config) => config
+builder.Host.UseSerilog((context, cfg) => cfg
     .ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddControllers()
@@ -27,7 +32,32 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ShedDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(config.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddIdentityCore<ApplicationUser>(opt =>
+{
+    opt.Password.RequireDigit = false;
+    opt.Password.RequireNonAlphanumeric = false;
+    opt.Password.RequiredLength = 8;
+})
+.AddEntityFrameworkStores<ShedDbContext>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opt =>
+    {
+        opt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = config["Jwt:Issuer"],
+            ValidAudience = config["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(config["Jwt:SecretKey"]!))
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IMeasurementHelper, MeasurementHelper>();
 builder.Services.AddScoped<IBomCalculator, BomCalculator>();
@@ -37,7 +67,7 @@ builder.Services.AddScoped<IPdfExporter, PdfExporter>();
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
-var corsOrigins = builder.Configuration["Cors:AllowedOrigins"]
+var corsOrigins = config["Cors:AllowedOrigins"]
     ?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
     ?? [];
 
@@ -60,7 +90,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = config.GetConnectionString("DefaultConnection");
 var healthChecks = builder.Services.AddHealthChecks();
 if (!string.IsNullOrEmpty(connectionString))
 {
@@ -77,7 +107,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 app.UseCors();
-app.UseMiddleware<ApiKeyAuthMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

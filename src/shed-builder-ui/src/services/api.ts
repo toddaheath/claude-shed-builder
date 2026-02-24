@@ -7,7 +7,8 @@ import type {
   CostResponse,
   DesignVersion,
   RegisterRequest,
-  UserResponse,
+  LoginRequest,
+  AuthResponse,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -16,22 +17,22 @@ const client = axios.create({
   baseURL: API_BASE,
 });
 
-const API_KEY_STORAGE = 'shed-builder-api-key';
+const TOKEN_STORAGE = 'shed-builder-token';
 
-export function getStoredApiKey(): string | null {
-  try { return localStorage.getItem(API_KEY_STORAGE); } catch { return null; }
+export function getStoredToken(): string | null {
+  try { return localStorage.getItem(TOKEN_STORAGE); } catch { return null; }
 }
 
-export function setStoredApiKey(key: string | null): void {
+export function setStoredToken(token: string | null): void {
   try {
-    if (key) localStorage.setItem(API_KEY_STORAGE, key);
-    else localStorage.removeItem(API_KEY_STORAGE);
+    if (token) localStorage.setItem(TOKEN_STORAGE, token);
+    else localStorage.removeItem(TOKEN_STORAGE);
   } catch { /* ignore */ }
 }
 
 client.interceptors.request.use((config) => {
-  const key = getStoredApiKey();
-  if (key) config.headers['X-Api-Key'] = key;
+  const token = getStoredToken();
+  if (token) config.headers['Authorization'] = `Bearer ${token}`;
   return config;
 });
 
@@ -39,7 +40,7 @@ client.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      setStoredApiKey(null);
+      setStoredToken(null);
       window.dispatchEvent(new Event('auth:expired'));
     }
     return Promise.reject(err);
@@ -48,7 +49,10 @@ client.interceptors.response.use(
 
 export const api = {
   register: (req: RegisterRequest) =>
-    client.post<UserResponse>('/users/register', req).then((r) => r.data),
+    client.post<AuthResponse>('/auth/register', req).then((r) => r.data),
+
+  login: (req: LoginRequest) =>
+    client.post<AuthResponse>('/auth/login', req).then((r) => r.data),
 
   listDesigns: () =>
     client.get<{ items: Design[]; totalCount: number }>('/designs').then((r) => r.data),

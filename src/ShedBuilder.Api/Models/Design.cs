@@ -49,7 +49,7 @@ public class Design
     public Guid UserId { get; set; }
 
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
 
     [Column("openings", TypeName = "jsonb")]
     public List<Opening> Openings { get; set; } = new();
