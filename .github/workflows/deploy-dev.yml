@@ -121,6 +121,21 @@ jobs:
           resource-group: ${{ vars.RESOURCE_GROUP }}
           cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
 
+      - name: Install cert-manager
+        run: |
+          helm repo add jetstack https://charts.jetstack.io --force-update
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --create-namespace \
+            --version v1.16.2 \
+            --set crds.enabled=true \
+            --wait
+
+      - name: Apply ClusterIssuer
+        env:
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+        run: envsubst < deploy/cluster/cert-manager-issuer.yaml | kubectl apply -f -
+
       - name: Roll back stuck Helm release
         run: |
           STATUS=$(helm status shed-builder-api --namespace shed-builder-api-dev -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
