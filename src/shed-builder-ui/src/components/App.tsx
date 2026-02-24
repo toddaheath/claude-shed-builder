@@ -10,14 +10,20 @@ import {
   Tabs,
   IconButton,
   Tooltip,
+  TextField,
+  Button,
+  Alert,
+  Paper,
 } from '@mui/material';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Design, UpdateDesignRequest } from '../types';
+import { api, getStoredApiKey, setStoredApiKey } from '../services/api';
 import { useDesignApi } from '../hooks/useDesignApi';
 import { useAutoSave } from '../hooks/useAutoSave';
 import ShedViewer3D from './ShedViewer3D';
@@ -37,28 +43,81 @@ function getStoredMode(): 'light' | 'dark' | null {
   return null;
 }
 
-export default function App() {
-  const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
-  const [mode, setMode] = useState<'light' | 'dark'>(() => getStoredMode() ?? (prefersDark ? 'dark' : 'light'));
+// ---------------------------------------------------------------------------
+// RegisterScreen
+// ---------------------------------------------------------------------------
 
-  const toggleDarkMode = useCallback(() => {
-    setMode(prev => {
-      const next = prev === 'light' ? 'dark' : 'light';
-      try { localStorage.setItem('shed-builder-theme', next); } catch { /* ignore */ }
-      return next;
-    });
-  }, []);
+function RegisterScreen({ onRegistered }: { onRegistered: (key: string) => void }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const theme = useMemo(() => createTheme({
-    palette: {
-      mode,
-      primary: { main: '#5D4037' },
-      secondary: { main: '#8D6E63' },
-      ...(mode === 'dark' && {
-        background: { default: '#1a1210', paper: '#2c211c' },
-      }),
-    },
-  }), [mode]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const user = await api.register({ name, email });
+      onRegistered(user.apiKey);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setError('An account with this email already exists.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+      <Paper elevation={3} sx={{ width: 360, p: 4 }}>
+        <Typography variant="h5" mb={1}>Shed Builder</Typography>
+        <Typography variant="body2" color="text.secondary" mb={3}>
+          Create an account to get started.
+        </Typography>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            required
+            sx={{ mb: 3 }}
+          />
+          <Button type="submit" variant="contained" fullWidth disabled={loading}>
+            {loading ? 'Creating account…' : 'Get Started'}
+          </Button>
+        </Box>
+      </Paper>
+    </Box>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AuthenticatedApp
+// ---------------------------------------------------------------------------
+
+interface AuthenticatedAppProps {
+  mode: 'light' | 'dark';
+  toggleDarkMode: () => void;
+  onSignOut: () => void;
+}
+
+function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppProps) {
   const {
     designs,
     currentDesign,
@@ -181,149 +240,207 @@ export default function App() {
   );
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <Box sx={{ display: 'flex', height: '100vh' }}>
       <a href="#main-content" className="sr-only" style={{
         position: 'absolute', left: '-9999px', top: 'auto', width: '1px', height: '1px',
         overflow: 'hidden', zIndex: 9999,
       }}>
         Skip to main content
       </a>
-      <Box sx={{ display: 'flex', height: '100vh' }}>
-        <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
-          <Toolbar>
-            <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-              Shed Builder
-            </Typography>
-            {activeDesign && (
-              <>
-                <Tooltip title="Undo (Ctrl+Z)">
-                  <span>
-                    <IconButton color="inherit" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
-                      <UndoIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Redo (Ctrl+Y)">
-                  <span>
-                    <IconButton color="inherit" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
-                      <RedoIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </>
-            )}
-            <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              <IconButton color="inherit" onClick={toggleDarkMode} aria-label="Toggle dark mode">
-                {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-              </IconButton>
-            </Tooltip>
-          </Toolbar>
-        </AppBar>
+      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
+        <Toolbar>
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+            Shed Builder
+          </Typography>
+          {activeDesign && (
+            <>
+              <Tooltip title="Undo (Ctrl+Z)">
+                <span>
+                  <IconButton color="inherit" onClick={handleUndo} disabled={!canUndo} aria-label="Undo">
+                    <UndoIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Redo (Ctrl+Y)">
+                <span>
+                  <IconButton color="inherit" onClick={handleRedo} disabled={!canRedo} aria-label="Redo">
+                    <RedoIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </>
+          )}
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton color="inherit" onClick={toggleDarkMode} aria-label="Toggle dark mode">
+              {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Sign out">
+            <IconButton color="inherit" onClick={onSignOut} aria-label="Sign out">
+              <LogoutIcon />
+            </IconButton>
+          </Tooltip>
+        </Toolbar>
+      </AppBar>
 
-        {/* Left sidebar: design list */}
+      {/* Left sidebar: design list */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+        }}
+      >
+        <Toolbar />
+        <nav aria-label="Design list">
+          <DesignList
+            designs={designs}
+            selectedId={activeDesign?.id ?? null}
+            onSelect={handleSelectDesign}
+            onCreate={handleCreateDesign}
+            onDelete={deleteDesign}
+          />
+        </nav>
+      </Drawer>
+
+      {/* Main: 3D viewer */}
+      <Box
+        component="main"
+        id="main-content"
+        role="main"
+        sx={{
+          flexGrow: 1,
+          pt: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {activeDesign ? (
+          <Box sx={{ flexGrow: 1 }} aria-label="3D shed preview" role="img">
+            <ShedViewer3D design={activeDesign} darkMode={mode === 'dark'} />
+          </Box>
+        ) : (
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            height="100%"
+          >
+            <Typography variant="h5" color="text.secondary">
+              Select or create a design to begin
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* Right panel: design controls + bom + versions */}
+      {activeDesign && (
         <Drawer
           variant="permanent"
+          anchor="right"
           sx={{
-            width: drawerWidth,
+            width: rightPanelWidth,
             flexShrink: 0,
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+            '& .MuiDrawer-paper': { width: rightPanelWidth, boxSizing: 'border-box' },
           }}
         >
           <Toolbar />
-          <nav aria-label="Design list">
-            <DesignList
-              designs={designs}
-              selectedId={activeDesign?.id ?? null}
-              onSelect={handleSelectDesign}
-              onCreate={handleCreateDesign}
-              onDelete={deleteDesign}
-            />
-          </nav>
-        </Drawer>
-
-        {/* Main: 3D viewer */}
-        <Box
-          component="main"
-          id="main-content"
-          role="main"
-          sx={{
-            flexGrow: 1,
-            pt: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {activeDesign ? (
-            <Box sx={{ flexGrow: 1 }} aria-label="3D shed preview" role="img">
-              <ShedViewer3D design={activeDesign} darkMode={mode === 'dark'} />
-            </Box>
-          ) : (
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              height="100%"
-            >
-              <Typography variant="h5" color="text.secondary">
-                Select or create a design to begin
-              </Typography>
-            </Box>
-          )}
-        </Box>
-
-        {/* Right panel: design controls + bom + versions */}
-        {activeDesign && (
-          <Drawer
-            variant="permanent"
-            anchor="right"
-            sx={{
-              width: rightPanelWidth,
-              flexShrink: 0,
-              '& .MuiDrawer-paper': { width: rightPanelWidth, boxSizing: 'border-box' },
-            }}
+          <Tabs
+            value={rightTab}
+            onChange={(_, v) => setRightTab(v)}
+            variant="fullWidth"
+            aria-label="Design panel tabs"
           >
-            <Toolbar />
-            <Tabs
-              value={rightTab}
-              onChange={(_, v) => setRightTab(v)}
-              variant="fullWidth"
-              aria-label="Design panel tabs"
-            >
-              <Tab label="Design" id="tab-design" aria-controls="tabpanel-design" />
-              <Tab label="BOM" id="tab-bom" aria-controls="tabpanel-bom" />
-              <Tab label="Versions" id="tab-versions" aria-controls="tabpanel-versions" />
-            </Tabs>
-            <Box sx={{ overflow: 'auto', flexGrow: 1 }} role="tabpanel">
-              {rightTab === 0 && (
-                <DesignPanel
-                  design={activeDesign}
-                  onChange={handleDesignChange}
-                  saveStatus={saveStatus}
-                />
-              )}
-              {rightTab === 1 && (
-                <BomTable
-                  designId={activeDesign.id}
-                  designName={activeDesign.name}
-                  bom={bom}
-                  onLoadBom={loadBom}
-                />
-              )}
-              {rightTab === 2 && (
-                <VersionPanel
-                  designId={activeDesign.id}
-                  versions={versions}
-                  onLoadVersions={loadVersions}
-                  onSaveVersion={createVersion}
-                  onRestoreVersion={restoreVersion}
-                />
-              )}
-            </Box>
-          </Drawer>
-        )}
-      </Box>
+            <Tab label="Design" id="tab-design" aria-controls="tabpanel-design" />
+            <Tab label="BOM" id="tab-bom" aria-controls="tabpanel-bom" />
+            <Tab label="Versions" id="tab-versions" aria-controls="tabpanel-versions" />
+          </Tabs>
+          <Box sx={{ overflow: 'auto', flexGrow: 1 }} role="tabpanel">
+            {rightTab === 0 && (
+              <DesignPanel
+                design={activeDesign}
+                onChange={handleDesignChange}
+                saveStatus={saveStatus}
+              />
+            )}
+            {rightTab === 1 && (
+              <BomTable
+                designId={activeDesign.id}
+                designName={activeDesign.name}
+                bom={bom}
+                onLoadBom={loadBom}
+              />
+            )}
+            {rightTab === 2 && (
+              <VersionPanel
+                designId={activeDesign.id}
+                versions={versions}
+                onLoadVersions={loadVersions}
+                onSaveVersion={createVersion}
+                onRestoreVersion={restoreVersion}
+              />
+            )}
+          </Box>
+        </Drawer>
+      )}
+    </Box>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// App — auth shell
+// ---------------------------------------------------------------------------
+
+export default function App() {
+  const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
+  const [mode, setMode] = useState<'light' | 'dark'>(() => getStoredMode() ?? (prefersDark ? 'dark' : 'light'));
+  const [apiKey, setApiKey] = useState<string | null>(() => getStoredApiKey());
+
+  const theme = useMemo(() => createTheme({
+    palette: {
+      mode,
+      primary: { main: '#5D4037' },
+      secondary: { main: '#8D6E63' },
+      ...(mode === 'dark' && {
+        background: { default: '#1a1210', paper: '#2c211c' },
+      }),
+    },
+  }), [mode]);
+
+  const toggleDarkMode = useCallback(() => {
+    setMode(prev => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('shed-builder-theme', next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setApiKey(null);
+    window.addEventListener('auth:expired', handler);
+    return () => window.removeEventListener('auth:expired', handler);
+  }, []);
+
+  const handleRegistered = useCallback((key: string) => {
+    setStoredApiKey(key);
+    setApiKey(key);
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    setStoredApiKey(null);
+    setApiKey(null);
+  }, []);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {apiKey ? (
+        <AuthenticatedApp mode={mode} toggleDarkMode={toggleDarkMode} onSignOut={handleSignOut} />
+      ) : (
+        <RegisterScreen onRegistered={handleRegistered} />
+      )}
     </ThemeProvider>
   );
 }
