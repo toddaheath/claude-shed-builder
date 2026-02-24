@@ -152,6 +152,7 @@ jobs:
             --set api.image.repository=${{ vars.ACR_LOGIN_SERVER }}/shed-builder-api \
             --set api.image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set postgres.password=${{ secrets.DB_PASSWORD }} \
+            --set api.jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
             --set storage.accountName=${{ vars.STORAGE_ACCOUNT_NAME }} \
             --cleanup-on-fail \
             --wait --timeout 5m

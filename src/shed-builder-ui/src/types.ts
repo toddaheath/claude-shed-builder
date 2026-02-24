@@ -103,12 +103,16 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export interface RegisterRequest {
   name: string;
   email: string;
+  password: string;
 }
 
-export interface UserResponse {
-  id: string;
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
   name: string;
   email: string;
-  apiKey: string;
-  createdAt: string;
 }

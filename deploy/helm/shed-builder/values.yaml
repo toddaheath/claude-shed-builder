@@ -6,6 +6,7 @@ api:
   replicas: 1
   port: 8080
   corsAllowedOrigins: ""
+  jwtSecretKey: ""
   resources:
     requests:
       cpu: 100m

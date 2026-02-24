@@ -23,7 +23,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Design, UpdateDesignRequest } from '../types';
-import { api, getStoredApiKey, setStoredApiKey } from '../services/api';
+import { api, getStoredToken, setStoredToken } from '../services/api';
 import { useDesignApi } from '../hooks/useDesignApi';
 import { useAutoSave } from '../hooks/useAutoSave';
 import ShedViewer3D from './ShedViewer3D';
@@ -47,9 +47,16 @@ function getStoredMode(): 'light' | 'dark' | null {
 // RegisterScreen
 // ---------------------------------------------------------------------------
 
-function RegisterScreen({ onRegistered }: { onRegistered: (key: string) => void }) {
+function RegisterScreen({
+  onRegistered,
+  onShowLogin,
+}: {
+  onRegistered: (token: string) => void;
+  onShowLogin: () => void;
+}) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -58,8 +65,8 @@ function RegisterScreen({ onRegistered }: { onRegistered: (key: string) => void 
     setLoading(true);
     setError(null);
     try {
-      const user = await api.register({ name, email });
-      onRegistered(user.apiKey);
+      const auth = await api.register({ name, email, password });
+      onRegistered(auth.token);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
@@ -96,12 +103,100 @@ function RegisterScreen({ onRegistered }: { onRegistered: (key: string) => void 
             onChange={(e) => setEmail(e.target.value)}
             fullWidth
             required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            fullWidth
+            required
+            inputProps={{ minLength: 8 }}
             sx={{ mb: 3 }}
           />
           <Button type="submit" variant="contained" fullWidth disabled={loading}>
             {loading ? 'Creating account…' : 'Get Started'}
           </Button>
         </Box>
+        <Typography variant="body2" mt={2} textAlign="center">
+          Already have an account?{' '}
+          <Button variant="text" size="small" onClick={onShowLogin} sx={{ p: 0, minWidth: 0 }}>
+            Sign in
+          </Button>
+        </Typography>
+      </Paper>
+    </Box>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LoginScreen
+// ---------------------------------------------------------------------------
+
+function LoginScreen({
+  onLoggedIn,
+  onShowRegister,
+}: {
+  onLoggedIn: (token: string) => void;
+  onShowRegister: () => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const auth = await api.login({ email, password });
+      onLoggedIn(auth.token);
+    } catch {
+      setError('Invalid email or password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+      <Paper elevation={3} sx={{ width: 360, p: 4 }}>
+        <Typography variant="h5" mb={1}>Shed Builder</Typography>
+        <Typography variant="body2" color="text.secondary" mb={3}>
+          Sign in to your account.
+        </Typography>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            fullWidth
+            required
+            sx={{ mb: 3 }}
+          />
+          <Button type="submit" variant="contained" fullWidth disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign In'}
+          </Button>
+        </Box>
+        <Typography variant="body2" mt={2} textAlign="center">
+          Don&apos;t have an account?{' '}
+          <Button variant="text" size="small" onClick={onShowRegister} sx={{ p: 0, minWidth: 0 }}>
+            Create account
+          </Button>
+        </Typography>
       </Paper>
     </Box>
   );
@@ -396,7 +491,8 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
 export default function App() {
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
   const [mode, setMode] = useState<'light' | 'dark'>(() => getStoredMode() ?? (prefersDark ? 'dark' : 'light'));
-  const [apiKey, setApiKey] = useState<string | null>(() => getStoredApiKey());
+  const [token, setToken] = useState<string | null>(() => getStoredToken());
+  const [showLogin, setShowLogin] = useState(false);
 
   const theme = useMemo(() => createTheme({
     palette: {
@@ -418,28 +514,36 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handler = () => setApiKey(null);
+    const handler = () => setToken(null);
     window.addEventListener('auth:expired', handler);
     return () => window.removeEventListener('auth:expired', handler);
   }, []);
 
-  const handleRegistered = useCallback((key: string) => {
-    setStoredApiKey(key);
-    setApiKey(key);
+  const handleAuthenticated = useCallback((t: string) => {
+    setStoredToken(t);
+    setToken(t);
   }, []);
 
   const handleSignOut = useCallback(() => {
-    setStoredApiKey(null);
-    setApiKey(null);
+    setStoredToken(null);
+    setToken(null);
   }, []);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {apiKey ? (
+      {token ? (
         <AuthenticatedApp mode={mode} toggleDarkMode={toggleDarkMode} onSignOut={handleSignOut} />
+      ) : showLogin ? (
+        <LoginScreen
+          onLoggedIn={handleAuthenticated}
+          onShowRegister={() => setShowLogin(false)}
+        />
       ) : (
-        <RegisterScreen onRegistered={handleRegistered} />
+        <RegisterScreen
+          onRegistered={handleAuthenticated}
+          onShowLogin={() => setShowLogin(true)}
+        />
       )}
     </ThemeProvider>
   );

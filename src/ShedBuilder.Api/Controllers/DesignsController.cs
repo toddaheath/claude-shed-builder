@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShedBuilder.Api.Data;
@@ -10,6 +12,7 @@ namespace ShedBuilder.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Authorize]
 public class DesignsController : ControllerBase
 {
     private readonly ShedDbContext _db;
@@ -28,7 +31,13 @@ public class DesignsController : ControllerBase
         _pdfExporter = pdfExporter;
     }
 
-    private User GetCurrentUser() => (User)HttpContext.Items["User"]!;
+    private async Task<ApplicationUser> GetCurrentUser()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new UnauthorizedAccessException();
+        return await _db.Users.FindAsync(Guid.Parse(userId))
+            ?? throw new UnauthorizedAccessException();
+    }
 
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<DesignResponse>>> List(
@@ -36,7 +45,7 @@ public class DesignsController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
 
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 1;
@@ -70,7 +79,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DesignResponse>> Get(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
         return MapToResponse(design);
@@ -79,7 +88,7 @@ public class DesignsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DesignResponse>> Create(CreateDesignRequest request)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = new Design
         {
             Id = Guid.NewGuid(),
@@ -115,7 +124,7 @@ public class DesignsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<DesignResponse>> Update(Guid id, UpdateDesignRequest request)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
@@ -149,7 +158,7 @@ public class DesignsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
@@ -161,7 +170,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/bom")]
     public async Task<ActionResult<BomResponse>> GetBom(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
         return _bom.Calculate(design);
@@ -170,7 +179,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/stl")]
     public async Task<IActionResult> GetStl(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
@@ -181,7 +190,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/cost")]
     public async Task<ActionResult<CostResponse>> GetCost(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
@@ -212,7 +221,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/pdf")]
     public async Task<IActionResult> GetPdf(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
@@ -246,7 +255,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/versions")]
     public async Task<ActionResult<List<VersionResponse>>> ListVersions(Guid id)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var designExists = await _db.Designs.AnyAsync(d => d.Id == id && d.UserId == user.Id);
         if (!designExists) return NotFound();
 
@@ -260,7 +269,7 @@ public class DesignsController : ControllerBase
     [HttpPost("{id:guid}/versions")]
     public async Task<ActionResult<VersionResponse>> CreateVersion(Guid id, CreateVersionRequest request)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
@@ -294,7 +303,7 @@ public class DesignsController : ControllerBase
     [HttpGet("{id:guid}/versions/{vid:guid}")]
     public async Task<ActionResult<VersionResponse>> GetVersion(Guid id, Guid vid)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var designExists = await _db.Designs.AnyAsync(d => d.Id == id && d.UserId == user.Id);
         if (!designExists) return NotFound();
 
@@ -307,7 +316,7 @@ public class DesignsController : ControllerBase
     [HttpPost("{id:guid}/versions/{vid:guid}/restore")]
     public async Task<ActionResult<DesignResponse>> RestoreVersion(Guid id, Guid vid)
     {
-        var user = GetCurrentUser();
+        var user = await GetCurrentUser();
         var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 

@@ -1,9 +1,11 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ShedBuilder.Api.Data;
 using ShedBuilder.Api.Models;
@@ -14,6 +16,16 @@ public class CustomWebAppFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Issuer"] = "shed-builder-api",
+                ["Jwt:Audience"] = "shed-builder-ui",
+                ["Jwt:SecretKey"] = "test-secret-key-at-least-32-chars!!"
+            });
+        });
+
         builder.ConfigureServices(services =>
         {
             var descriptor = services.SingleOrDefault(
@@ -47,41 +59,73 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     private async Task<T?> ReadJson<T>(HttpContent content) =>
         await content.ReadFromJsonAsync<T>(JsonOptions);
 
-    private async Task<(UserResponse User, HttpClient Client)> CreateAuthenticatedUser(string name, string email)
+    private async Task<(AuthResponse Auth, HttpClient Client)> CreateAuthenticatedUser(string name, string email)
     {
-        var registerResponse = await _client.PostAsJsonAsync("/api/v1/users/register",
-            new RegisterUserRequest { Name = name, Email = email }, JsonOptions);
-        var user = await ReadJson<UserResponse>(registerResponse.Content);
-        _client.DefaultRequestHeaders.Remove("X-Api-Key");
-        _client.DefaultRequestHeaders.Add("X-Api-Key", user!.ApiKey.ToString());
-        return (user, _client);
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name, email, password = "Password123!" }, JsonOptions);
+        var auth = await ReadJson<AuthResponse>(registerResponse.Content);
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", auth!.Token);
+        return (auth, _client);
     }
 
     [Fact]
-    public async Task RegisterUser_ReturnsApiKey()
+    public async Task RegisterUser_ReturnsToken()
     {
-        var response = await _client.PostAsJsonAsync("/api/v1/users/register",
-            new RegisterUserRequest { Name = "Test", Email = $"reg-{Guid.NewGuid()}@test.com" }, JsonOptions);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = "Test", email = $"reg-{Guid.NewGuid()}@test.com", password = "Password123!" },
+            JsonOptions);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var user = await ReadJson<UserResponse>(response.Content);
-        Assert.NotNull(user);
-        Assert.NotEqual(Guid.Empty, user.ApiKey);
+        var auth = await ReadJson<AuthResponse>(response.Content);
+        Assert.NotNull(auth);
+        Assert.NotEmpty(auth.Token);
+        Assert.NotEmpty(auth.Email);
+    }
+
+    [Fact]
+    public async Task Login_WithValidCredentials_ReturnsToken()
+    {
+        var email = $"login-{Guid.NewGuid()}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = "Login Test", email, password = "Password123!" }, JsonOptions);
+
+        _client.DefaultRequestHeaders.Authorization = null;
+        var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { email, password = "Password123!" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        var auth = await ReadJson<AuthResponse>(loginResponse.Content);
+        Assert.NotNull(auth);
+        Assert.NotEmpty(auth.Token);
+    }
+
+    [Fact]
+    public async Task Login_WithWrongPassword_Returns401()
+    {
+        var email = $"badlogin-{Guid.NewGuid()}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = "Bad Login", email, password = "Password123!" }, JsonOptions);
+
+        _client.DefaultRequestHeaders.Authorization = null;
+        var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { email, password = "WrongPassword!" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.Unauthorized, loginResponse.StatusCode);
     }
 
     [Fact]
     public async Task UnauthorizedRequest_Returns401()
     {
-        _client.DefaultRequestHeaders.Remove("X-Api-Key");
+        _client.DefaultRequestHeaders.Authorization = null;
         var response = await _client.GetAsync("/api/v1/designs");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task InvalidApiKey_Returns401()
+    public async Task InvalidToken_Returns401()
     {
-        _client.DefaultRequestHeaders.Remove("X-Api-Key");
-        _client.DefaultRequestHeaders.Add("X-Api-Key", Guid.NewGuid().ToString());
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", "invalid.jwt.token");
         var response = await _client.GetAsync("/api/v1/designs");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -296,17 +340,5 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
 
         var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task GetMe_ReturnsCurrentUser()
-    {
-        var (user, _) = await CreateAuthenticatedUser("MeUser", $"me-{Guid.NewGuid()}@test.com");
-
-        var response = await _client.GetAsync("/api/v1/users/me");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var me = await ReadJson<UserResponse>(response.Content);
-        Assert.Equal(user.Email, me!.Email);
     }
 }
