@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "shed-builder.fullname" . }}
+  name: {{ include "shed-builder.fullname" . }}-ingress
   labels:
     {{- include "shed-builder.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
