@@ -19,6 +19,17 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: api
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ include "shed-builder.fullname" . }}-postgres -p {{ .Values.postgres.port }} -U {{ .Values.postgres.username }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
       containers:
         - name: api
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
