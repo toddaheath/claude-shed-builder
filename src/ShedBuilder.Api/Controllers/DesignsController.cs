@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +12,7 @@ namespace ShedBuilder.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
-public class DesignsController : ControllerBase
+public class DesignsController : AuthenticatedControllerBase
 {
     private readonly ShedDbContext _db;
     private readonly IBomCalculator _bom;
@@ -22,22 +21,13 @@ public class DesignsController : ControllerBase
     private readonly IPdfExporter _pdfExporter;
 
     public DesignsController(ShedDbContext db, IBomCalculator bom, IStlExporter stl,
-        IPriceService priceService, IPdfExporter pdfExporter)
+        IPriceService priceService, IPdfExporter pdfExporter) : base(db)
     {
         _db = db;
         _bom = bom;
         _stl = stl;
         _priceService = priceService;
         _pdfExporter = pdfExporter;
-    }
-
-    private async Task<(ApplicationUser? User, ActionResult? Error)> GetCurrentUser()
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (claim == null || !Guid.TryParse(claim, out var userId))
-            return (null, Unauthorized());
-        var user = await _db.Users.FindAsync(userId);
-        return user == null ? (null, Unauthorized()) : (user, null);
     }
 
     [HttpGet]

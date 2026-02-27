@@ -10,6 +10,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
@@ -31,8 +32,9 @@ export default function VersionPanel({
   onSaveVersion,
   onRestoreVersion,
 }: Props) {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [label, setLabel] = useState('');
+  const [restoreTarget, setRestoreTarget] = useState<DesignVersion | null>(null);
 
   useEffect(() => {
     onLoadVersions(designId);
@@ -42,7 +44,14 @@ export default function VersionPanel({
     if (label.trim()) {
       onSaveVersion(designId, label.trim());
       setLabel('');
-      setDialogOpen(false);
+      setSaveDialogOpen(false);
+    }
+  };
+
+  const handleRestore = () => {
+    if (restoreTarget) {
+      onRestoreVersion(designId, restoreTarget.id);
+      setRestoreTarget(null);
     }
   };
 
@@ -54,7 +63,7 @@ export default function VersionPanel({
           variant="outlined"
           startIcon={<SaveIcon />}
           size="small"
-          onClick={() => setDialogOpen(true)}
+          onClick={() => setSaveDialogOpen(true)}
         >
           Save Version
         </Button>
@@ -64,7 +73,7 @@ export default function VersionPanel({
         {versions.map((v) => (
           <ListItemButton
             key={v.id}
-            onClick={() => onRestoreVersion(designId, v.id)}
+            onClick={() => setRestoreTarget(v)}
           >
             <ListItemText
               primary={`v${v.versionNumber}: ${v.label}`}
@@ -81,7 +90,8 @@ export default function VersionPanel({
         </Typography>
       )}
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+      {/* Save version dialog */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
         <DialogTitle>Save Version</DialogTitle>
         <DialogContent>
           <TextField
@@ -95,8 +105,24 @@ export default function VersionPanel({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Restore confirmation dialog */}
+      <Dialog open={restoreTarget !== null} onClose={() => setRestoreTarget(null)}>
+        <DialogTitle>Restore Version?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will revert the current design to{' '}
+            <strong>v{restoreTarget?.versionNumber}: {restoreTarget?.label}</strong>.
+            Any unsaved changes will be lost.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRestoreTarget(null)}>Cancel</Button>
+          <Button onClick={handleRestore} variant="contained" color="warning">Restore</Button>
         </DialogActions>
       </Dialog>
     </Box>
