@@ -11,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shedbuilder"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -22,7 +27,8 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=shedbuilder;Username=shedbuilder;Password=shedbuilder_dev"
       ASPNETCORE_ENVIRONMENT: Development
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   ui:
     build:

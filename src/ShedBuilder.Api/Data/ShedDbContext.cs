@@ -39,6 +39,9 @@ public class ShedDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
                     v => JsonSerializer.Serialize(v, jsonOpts),
                     v => JsonSerializer.Deserialize<List<Opening>>(v, jsonOpts) ?? new List<Opening>())
                 .HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.UserId, e.UpdatedAt })
+                .IsDescending(false, true)
+                .HasDatabaseName("IX_designs_user_id_updated_at");
         });
 
         modelBuilder.Entity<DesignVersion>(entity =>
