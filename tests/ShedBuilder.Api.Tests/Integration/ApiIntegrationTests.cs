@@ -14,6 +14,8 @@ namespace ShedBuilder.Api.Tests.Integration;
 
 public class CustomWebAppFactory : WebApplicationFactory<Program>
 {
+    private readonly string _dbName = $"IntegrationTest-{Guid.NewGuid()}";
+
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
         builder.ConfigureAppConfiguration((_, config) =>
@@ -33,7 +35,7 @@ public class CustomWebAppFactory : WebApplicationFactory<Program>
             if (descriptor != null) services.Remove(descriptor);
 
             services.AddDbContext<ShedDbContext>(options =>
-                options.UseInMemoryDatabase("IntegrationTest"));
+                options.UseInMemoryDatabase(_dbName));
 
             // Remove NpgSql health check since we use InMemory
             var healthCheckDescriptor = services.SingleOrDefault(
@@ -289,8 +291,8 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
 
         var response = await _client.GetAsync("/api/v1/designs");
         var paginated = await ReadJson<PaginatedResponse<DesignResponse>>(response.Content);
-        Assert.True(paginated!.TotalCount >= 2);
-        Assert.True(paginated.Items.Count >= 2);
+        Assert.Equal(2, paginated!.TotalCount);
+        Assert.Equal(2, paginated.Items.Count);
     }
 
     [Fact]

@@ -19,6 +19,10 @@ export function useAutoSave(designId: string | null, data: UpdateDesignRequest |
   }, []);
 
   useEffect(() => {
+    lastSavedRef.current = '';
+  }, [designId]);
+
+  useEffect(() => {
     if (!designId || !data) return;
 
     const serialized = JSON.stringify(data);

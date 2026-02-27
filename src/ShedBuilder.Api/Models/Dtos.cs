@@ -98,9 +98,13 @@ public record OpeningDto
 {
     public OpeningType Type { get; init; }
     public WallSide Wall { get; init; }
+    [Range(0, 720)]
     public int OffsetInches { get; init; }
+    [Range(12, 120)]
     public int WidthInches { get; init; }
+    [Range(12, 120)]
     public int HeightInches { get; init; }
+    [Range(0, 240)]
     public int SillHeightInches { get; init; }
 }
 
