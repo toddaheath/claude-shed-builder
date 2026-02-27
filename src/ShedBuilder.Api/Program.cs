@@ -137,19 +137,25 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 });
 app.MapHealthChecks("/health/ready");
 
-// Auto-migrate on startup (skip for non-relational providers like InMemory)
+// Auto-migrate: disabled by default in production (use Helm migration job instead).
+// Set RUN_MIGRATIONS=true to enable at startup (safe for single-instance dev).
+// Set MIGRATE_ONLY=true to run migrations then exit (used by Helm pre-upgrade job).
+var runMigrations = app.Configuration.GetValue("RUN_MIGRATIONS", app.Environment.IsDevelopment());
+var migrateOnly = app.Configuration.GetValue<bool>("MIGRATE_ONLY");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ShedDbContext>();
     if (db.Database.IsRelational())
     {
-        db.Database.Migrate();
+        if (runMigrations || migrateOnly) db.Database.Migrate();
     }
     else
     {
         db.Database.EnsureCreated();
     }
 }
+
+if (migrateOnly) return;
 
 app.Run();
 

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { Design, Opening, WallSide } from '../types';
@@ -209,7 +210,7 @@ function LeanToTriangle({ w, rise }: { w: number; rise: number }) {
   return <shapeGeometry args={[shape]} />;
 }
 
-export default function ShedViewer3D({ design, darkMode = false }: Props) {
+function ShedViewer3D({ design, darkMode = false }: Props) {
   const bg = darkMode ? '#1a1210' : '#e8e8e8';
   const gridColors: [string, string] = darkMode ? ['#555', '#333'] : ['#999', '#ccc'];
 
@@ -226,3 +227,5 @@ export default function ShedViewer3D({ design, darkMode = false }: Props) {
     </Canvas>
   );
 }
+
+export default memo(ShedViewer3D);

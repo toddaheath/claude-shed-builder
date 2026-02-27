@@ -20,6 +20,7 @@ import RedoIcon from '@mui/icons-material/Redo';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LogoutIcon from '@mui/icons-material/Logout';
+import CircularProgress from '@mui/material/CircularProgress';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Design, UpdateDesignRequest } from '../types';
@@ -218,6 +219,7 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
     currentDesign,
     bom,
     versions,
+    loading,
     setCurrentDesign,
     loadDesign,
     createDesign,
@@ -347,6 +349,7 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
           <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
             Shed Builder
           </Typography>
+          {loading && <CircularProgress size={20} color="inherit" sx={{ mr: 2 }} />}
           {activeDesign && (
             <>
               <Tooltip title="Undo (Ctrl+Z)">
@@ -419,13 +422,19 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
         ) : (
           <Box
             display="flex"
+            flexDirection="column"
             alignItems="center"
             justifyContent="center"
             height="100%"
+            gap={2}
           >
-            <Typography variant="h5" color="text.secondary">
-              Select or create a design to begin
-            </Typography>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <Typography variant="h5" color="text.secondary">
+                Select or create a design to begin
+              </Typography>
+            )}
           </Box>
         )}
       </Box>

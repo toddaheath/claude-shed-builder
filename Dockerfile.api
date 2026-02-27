@@ -9,6 +9,11 @@ RUN dotnet publish src/ShedBuilder.Api/ShedBuilder.Api.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
+
+RUN addgroup --gid 1001 appgroup && \
+    adduser --uid 1001 --ingroup appgroup --disabled-password --gecos "" appuser
+USER appuser
+
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENTRYPOINT ["dotnet", "ShedBuilder.Api.dll"]
