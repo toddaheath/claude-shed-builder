@@ -15,11 +15,14 @@ namespace ShedBuilder.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IConfiguration _config;
 
-    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config)
+    public AuthController(UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager, IConfiguration config)
     {
         _userManager = userManager;
+        _signInManager = signInManager;
         _config = config;
     }
 
@@ -51,7 +54,13 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
+        if (user == null)
+            return Unauthorized(new { error = "Invalid email or password." });
+
+        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+            return Unauthorized(new { error = "Account locked due to too many failed attempts. Try again later." });
+        if (!result.Succeeded)
             return Unauthorized(new { error = "Invalid email or password." });
 
         return new AuthResponse(GenerateToken(user), user.Name, user.Email!);
@@ -70,7 +79,7 @@ public class AuthController : ControllerBase
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(30),
+            expires: DateTime.UtcNow.AddDays(7),
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

@@ -47,6 +47,9 @@ public class DesignVersion
     [Column("roof_type")]
     public RoofType RoofType { get; set; }
 
+    [Column("openings", TypeName = "jsonb")]
+    public List<Opening> Openings { get; set; } = new();
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
 }

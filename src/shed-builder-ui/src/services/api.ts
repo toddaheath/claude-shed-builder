@@ -75,18 +75,24 @@ export const api = {
   getCost: (id: string) =>
     client.get<CostResponse>(`/designs/${id}/cost`).then((r) => r.data),
 
-  downloadStl: (id: string, name: string) => {
+  downloadStl: async (id: string, name: string) => {
+    const res = await client.get(`/designs/${id}/stl`, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
     const link = document.createElement('a');
-    link.href = `${API_BASE}/designs/${id}/stl`;
+    link.href = url;
     link.download = `${name}.stl`;
     link.click();
+    URL.revokeObjectURL(url);
   },
 
-  downloadPdf: (id: string, name: string) => {
+  downloadPdf: async (id: string, name: string) => {
+    const res = await client.get(`/designs/${id}/pdf`, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
     const link = document.createElement('a');
-    link.href = `${API_BASE}/designs/${id}/pdf`;
+    link.href = url;
     link.download = `${name}.pdf`;
     link.click();
+    URL.revokeObjectURL(url);
   },
 
   listVersions: (id: string) =>

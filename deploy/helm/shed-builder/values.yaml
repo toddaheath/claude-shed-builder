@@ -6,7 +6,9 @@ api:
   replicas: 1
   port: 8080
   corsAllowedOrigins: ""
-  jwtSecretKey: ""
+  # REQUIRED: Set via --set api.jwtSecretKey=<key> or external secrets manager.
+  # Must be at least 32 characters. DO NOT commit real keys.
+  jwtSecretKey: "CHANGE-ME-SET-VIA-HELM-SET-OR-EXTERNAL-SECRETS"
   resources:
     requests:
       cpu: 100m
@@ -38,7 +40,9 @@ postgres:
   port: 5432
   database: shedbuilder
   username: shedbuilder
-  password: shedbuilder_dev
+  # REQUIRED: Set via --set postgres.password=<password> or external secrets manager.
+  # DO NOT commit real passwords.
+  password: "CHANGE-ME-SET-VIA-HELM-SET-OR-EXTERNAL-SECRETS"
   storage:
     size: 1Gi
     storageClass: ""

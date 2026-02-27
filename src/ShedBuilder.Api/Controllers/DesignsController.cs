@@ -291,6 +291,15 @@ public class DesignsController : ControllerBase
             HeightInches = design.HeightInches,
             RoofPitch = design.RoofPitch,
             RoofType = design.RoofType,
+            Openings = design.Openings.Select(o => new Opening
+            {
+                Type = o.Type,
+                Wall = o.Wall,
+                OffsetInches = o.OffsetInches,
+                WidthInches = o.WidthInches,
+                HeightInches = o.HeightInches,
+                SillHeightInches = o.SillHeightInches,
+            }).ToList(),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -332,6 +341,15 @@ public class DesignsController : ControllerBase
         design.HeightInches = version.HeightInches;
         design.RoofPitch = version.RoofPitch;
         design.RoofType = version.RoofType;
+        design.Openings = version.Openings.Select(o => new Opening
+        {
+            Type = o.Type,
+            Wall = o.Wall,
+            OffsetInches = o.OffsetInches,
+            WidthInches = o.WidthInches,
+            HeightInches = o.HeightInches,
+            SillHeightInches = o.SillHeightInches,
+        }).ToList();
         design.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -377,6 +395,15 @@ public class DesignsController : ControllerBase
         HeightInches = v.HeightInches,
         RoofPitch = v.RoofPitch,
         RoofType = v.RoofType,
+        Openings = v.Openings.Select(o => new OpeningDto
+        {
+            Type = o.Type,
+            Wall = o.Wall,
+            OffsetInches = o.OffsetInches,
+            WidthInches = o.WidthInches,
+            HeightInches = o.HeightInches,
+            SillHeightInches = o.SillHeightInches,
+        }).ToList(),
         CreatedAt = v.CreatedAt
     };
 }
