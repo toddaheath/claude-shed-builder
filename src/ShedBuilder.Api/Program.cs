@@ -39,7 +39,11 @@ builder.Services.AddIdentityCore<ApplicationUser>(opt =>
     opt.Password.RequireDigit = false;
     opt.Password.RequireNonAlphanumeric = false;
     opt.Password.RequiredLength = 8;
+    opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    opt.Lockout.MaxFailedAccessAttempts = 5;
+    opt.Lockout.AllowedForNewUsers = true;
 })
+.AddSignInManager()
 .AddEntityFrameworkStores<ShedDbContext>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -59,6 +63,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IMeasurementHelper, MeasurementHelper>();
 builder.Services.AddScoped<IBomCalculator, BomCalculator>();
 builder.Services.AddScoped<IStlExporter, StlExporter>();
@@ -81,11 +86,17 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         }
-        else
+        else if (builder.Environment.IsDevelopment())
         {
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigins must be configured in non-Development environments. " +
+                "Set it via environment variable Cors__AllowedOrigins.");
         }
     });
 });
@@ -98,6 +109,15 @@ if (!string.IsNullOrEmpty(connectionString))
 }
 
 var app = builder.Build();
+
+// Validate JWT secret key at startup
+{
+    var jwtSecret = app.Configuration["Jwt:SecretKey"];
+    if (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Length < 32)
+        throw new InvalidOperationException(
+            "Jwt:SecretKey must be configured and at least 32 characters. " +
+            "Set it via environment variable Jwt__SecretKey or in appsettings.");
+}
 
 if (app.Environment.IsDevelopment())
 {

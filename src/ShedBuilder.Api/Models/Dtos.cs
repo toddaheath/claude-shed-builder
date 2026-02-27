@@ -162,6 +162,7 @@ public record VersionResponse
     public int HeightInches { get; init; }
     public decimal RoofPitch { get; init; }
     public RoofType RoofType { get; init; }
+    public List<OpeningDto> Openings { get; init; } = new();
     public DateTime CreatedAt { get; init; }
 }
 

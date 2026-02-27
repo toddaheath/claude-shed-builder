@@ -18,6 +18,12 @@ public class ShedDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
     {
         base.OnModelCreating(modelBuilder);
 
+        var jsonOpts = new JsonSerializerOptions
+        {
+            Converters = { new JsonStringEnumConverter() },
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         modelBuilder.Entity<Design>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -28,11 +34,6 @@ public class ShedDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
                 .WithMany(u => u.Designs)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            var jsonOpts = new JsonSerializerOptions
-            {
-                Converters = { new JsonStringEnumConverter() },
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
             entity.Property(e => e.Openings)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, jsonOpts),
@@ -50,6 +51,11 @@ public class ShedDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
             entity.Property(e => e.RoofType)
                 .HasConversion<string>()
                 .HasMaxLength(20);
+            entity.Property(e => e.Openings)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonOpts),
+                    v => JsonSerializer.Deserialize<List<Opening>>(v, jsonOpts) ?? new List<Opening>())
+                .HasColumnType("jsonb");
         });
     }
 }
