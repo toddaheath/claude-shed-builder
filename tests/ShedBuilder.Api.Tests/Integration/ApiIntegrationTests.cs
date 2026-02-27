@@ -261,8 +261,8 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         await _client.PutAsJsonAsync($"/api/v1/designs/{id}", new UpdateDesignRequest { WidthFeet = 20 }, JsonOptions);
 
         var listResponse = await _client.GetAsync($"/api/v1/designs/{id}/versions");
-        var versions = await ReadJson<List<VersionResponse>>(listResponse.Content);
-        Assert.Single(versions!);
+        var versions = (await ReadJson<List<VersionResponse>>(listResponse.Content))!;
+        Assert.Single(versions);
         Assert.Equal("Initial", versions[0].Label);
 
         var restoreResponse = await _client.PostAsync($"/api/v1/designs/{id}/versions/{versions[0].Id}/restore", null);
