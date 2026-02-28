@@ -156,4 +156,4 @@ jobs:
             --set api.jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
             --set storage.accountName=${{ vars.STORAGE_ACCOUNT_NAME }} \
             --cleanup-on-fail \
-            --wait --timeout 5m
+            --wait --timeout 10m
