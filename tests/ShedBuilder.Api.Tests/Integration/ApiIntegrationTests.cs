@@ -24,7 +24,8 @@ public class CustomWebAppFactory : WebApplicationFactory<Program>
             {
                 ["Jwt:Issuer"] = "shed-builder-api",
                 ["Jwt:Audience"] = "shed-builder-ui",
-                ["Jwt:SecretKey"] = "test-secret-key-at-least-32-chars!!"
+                ["Jwt:SecretKey"] = "test-secret-key-at-least-32-chars!!",
+                ["DISABLE_RATE_LIMITING"] = "true"
             });
         });
 

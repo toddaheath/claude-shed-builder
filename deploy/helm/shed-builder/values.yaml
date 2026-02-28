@@ -43,6 +43,13 @@ postgres:
   # REQUIRED: Set via --set postgres.password=<password> or external secrets manager.
   # DO NOT commit real passwords.
   password: "CHANGE-ME-SET-VIA-HELM-SET-OR-EXTERNAL-SECRETS"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
   storage:
     size: 1Gi
     storageClass: ""

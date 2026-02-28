@@ -4,6 +4,7 @@ using System.Text;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using ShedBuilder.Api.Models;
 
@@ -27,6 +28,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         var user = new ApplicationUser
@@ -51,6 +53,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
@@ -79,7 +82,7 @@ public class AuthController : ControllerBase
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
+            expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
