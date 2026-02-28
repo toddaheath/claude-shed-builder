@@ -10,6 +10,7 @@ using ShedBuilder.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
+var migrateOnly = config.GetValue<bool>("MIGRATE_ONLY");
 
 builder.Host.UseSerilog((context, cfg) => cfg
     .ReadFrom.Configuration(context.Configuration));
@@ -46,21 +47,24 @@ builder.Services.AddIdentityCore<ApplicationUser>(opt =>
 .AddSignInManager()
 .AddEntityFrameworkStores<ShedDbContext>();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(opt =>
-    {
-        opt.TokenValidationParameters = new TokenValidationParameters
+if (!migrateOnly)
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(opt =>
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = config["Jwt:Issuer"],
-            ValidAudience = config["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(config["Jwt:SecretKey"]!))
-        };
-    });
+            opt.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = config["Jwt:Issuer"],
+                ValidAudience = config["Jwt:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(config["Jwt:SecretKey"]!))
+            };
+        });
+}
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpContextAccessor();
@@ -86,7 +90,7 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         }
-        else if (builder.Environment.IsDevelopment())
+        else if (builder.Environment.IsDevelopment() || migrateOnly)
         {
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
@@ -110,7 +114,8 @@ if (!string.IsNullOrEmpty(connectionString))
 
 var app = builder.Build();
 
-// Validate JWT secret key at startup
+// Validate JWT secret key at startup (skip for migration-only runs)
+if (!migrateOnly)
 {
     var jwtSecret = app.Configuration["Jwt:SecretKey"];
     if (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Length < 32)
@@ -141,7 +146,6 @@ app.MapHealthChecks("/health/ready");
 // Set RUN_MIGRATIONS=true to enable at startup (safe for single-instance dev).
 // Set MIGRATE_ONLY=true to run migrations then exit (used by Helm pre-upgrade job).
 var runMigrations = app.Configuration.GetValue("RUN_MIGRATIONS", app.Environment.IsDevelopment());
-var migrateOnly = app.Configuration.GetValue<bool>("MIGRATE_ONLY");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ShedDbContext>();
