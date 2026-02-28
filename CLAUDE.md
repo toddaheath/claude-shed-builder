@@ -55,3 +55,4 @@ helm template deploy/helm/shed-builder
 - RoofType enum: Gable, LeanTo
 - Dimensions are stored as feet + inches (int pairs)
 - All NuGet packages pinned to 8.0.11 for EF Core compatibility
+- Rate limiting on auth endpoints (login: 5/min, register: 3/5min) — disabled in integration tests via `DISABLE_RATE_LIMITING=true` config flag
