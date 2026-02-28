@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "shed-builder.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "-1"
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 spec:
   backoffLimit: 3
   template:
@@ -18,6 +18,17 @@ spec:
         app.kubernetes.io/component: migration
     spec:
       restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ include "shed-builder.fullname" . }}-postgres -p {{ .Values.postgres.port }} -U {{ .Values.postgres.username }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
       containers:
         - name: migrate
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
@@ -25,8 +36,10 @@ spec:
           env:
             - name: MIGRATE_ONLY
               value: "true"
-            - name: ConnectionStrings__DefaultConnection
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "shed-builder.fullname" . }}-secrets
-                  key: connection-string
+                  name: {{ include "shed-builder.fullname" . }}-db
+                  key: postgres-password
+            - name: ConnectionStrings__DefaultConnection
+              value: "Host={{ include "shed-builder.fullname" . }}-postgres;Database={{ .Values.postgres.database }};Username={{ .Values.postgres.username }};Password=$(DB_PASSWORD)"
