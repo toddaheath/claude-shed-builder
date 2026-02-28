@@ -375,4 +375,97 @@ public class DesignsControllerTests : IDisposable
         var result = await _controller.Get(id);
         Assert.IsType<NotFoundResult>(result.Result);
     }
+
+    private async Task<(Guid designId, Guid versionId)> CreateDesignWithVersionAsDifferentUser()
+    {
+        // Create design as the default test user
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var designId = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        var versionResult = await _controller.CreateVersion(designId, new CreateVersionRequest { Label = "v1" });
+        var versionId = ((versionResult.Result as CreatedAtActionResult)!.Value as VersionResponse)!.Id;
+
+        // Switch to a different user
+        var otherUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Name = "Other",
+            Email = "other@example.com",
+            UserName = "other@example.com",
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.Users.Add(otherUser);
+        await _db.SaveChangesAsync();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = BuildHttpContextForUser(otherUser)
+        };
+
+        return (designId, versionId);
+    }
+
+    [Fact]
+    public async Task Update_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.Update(designId, new UpdateDesignRequest { Name = "Hacked" });
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task Delete_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.Delete(designId);
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task GetBom_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.GetBom(designId);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetStl_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.GetStl(designId);
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task GetCost_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.GetCost(designId);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetPdf_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.GetPdf(designId);
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task CreateVersion_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.CreateVersion(designId, new CreateVersionRequest { Label = "stolen" });
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task RestoreVersion_OtherUsersDesign_ReturnsNotFound()
+    {
+        var (designId, versionId) = await CreateDesignWithVersionAsDifferentUser();
+        var result = await _controller.RestoreVersion(designId, versionId);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
 }
