@@ -173,7 +173,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
             <Typography variant="body2" fontWeight="bold">
               {opening.type} #{index + 1}
             </Typography>
-            <IconButton size="small" onClick={() => removeOpening(index)}>
+            <IconButton size="small" onClick={() => removeOpening(index)} aria-label={`Remove ${opening.type} #${index + 1}`}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Stack>

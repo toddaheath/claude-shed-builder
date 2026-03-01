@@ -52,7 +52,7 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
     <Box sx={{ p: 1 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} px={1}>
         <Typography variant="subtitle1" fontWeight="bold">Designs</Typography>
-        <IconButton size="small" onClick={() => setDialogOpen(true)}>
+        <IconButton size="small" onClick={() => setDialogOpen(true)} aria-label="Create new design">
           <AddIcon />
         </IconButton>
       </Box>
