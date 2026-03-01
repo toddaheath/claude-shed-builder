@@ -144,7 +144,7 @@ function WallWithOpenings({
   return (
     <group position={position} rotation={rotation}>
       {/* Full wall */}
-      <mesh position={[0, 0, 0]}>
+      <mesh position={[0, 0, 0]} castShadow receiveShadow>
         <boxGeometry args={[w, h, wallThickness]} />
         <meshStandardMaterial color="#F5DEB3" />
       </mesh>
@@ -182,7 +182,7 @@ function ShedGeometry({ design }: Props) {
   return (
     <group position={[-w / 2, 0, -d / 2]}>
       {/* Floor */}
-      <mesh position={[w / 2, 0, d / 2]}>
+      <mesh position={[w / 2, 0, d / 2]} receiveShadow castShadow>
         <boxGeometry args={[w, 0.1, d]} />
         <meshStandardMaterial color="#8B4513" />
       </mesh>
@@ -242,13 +242,13 @@ function GableRoof({ w, d, h, pitch }: { w: number; d: number; h: number; pitch:
   return (
     <group>
       {/* Left slope */}
-      <mesh position={[halfW / 2, h + rise / 2, d / 2]} rotation={[0, 0, angle]}>
+      <mesh position={[halfW / 2, h + rise / 2, d / 2]} rotation={[0, 0, angle]} castShadow>
         <boxGeometry args={[rafterLen, 0.08, d + 0.2]} />
         <meshStandardMaterial color="#8B0000" />
       </mesh>
 
       {/* Right slope */}
-      <mesh position={[w - halfW / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]}>
+      <mesh position={[w - halfW / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]} castShadow>
         <boxGeometry args={[rafterLen, 0.08, d + 0.2]} />
         <meshStandardMaterial color="#8B0000" />
       </mesh>
@@ -284,7 +284,7 @@ function LeanToRoof({ w, d, h, pitch }: { w: number; d: number; h: number; pitch
 
   return (
     <group>
-      <mesh position={[w / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]}>
+      <mesh position={[w / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]} castShadow>
         <boxGeometry args={[rafterLen, 0.08, d + 0.2]} />
         <meshStandardMaterial color="#8B0000" />
       </mesh>
@@ -343,12 +343,30 @@ function ShedViewer3D({ design, darkMode = false }: Props) {
 
   return (
     <Canvas
+      shadows
       camera={{ position: camPos, fov: 50 }}
       style={{ background: bg }}
     >
       <ambientLight intensity={darkMode ? 0.4 : 0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={darkMode ? 0.8 : 1} />
+      <directionalLight
+        position={[10, 10, 5]}
+        intensity={darkMode ? 0.8 : 1}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-near={0.5}
+        shadow-camera-far={50}
+        shadow-camera-left={-15}
+        shadow-camera-right={15}
+        shadow-camera-top={15}
+        shadow-camera-bottom={-15}
+      />
       <ShedGeometry design={design} />
+      {/* Ground plane to receive shadows */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+        <planeGeometry args={[gridSize, gridSize]} />
+        <shadowMaterial opacity={0.3} />
+      </mesh>
       <gridHelper args={[gridSize, gridSize, gridColors[0], gridColors[1]]} />
       <OrbitControls />
     </Canvas>
