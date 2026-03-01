@@ -43,6 +43,9 @@ client.interceptors.response.use(
       setStoredToken(null);
       window.dispatchEvent(new Event('auth:expired'));
     }
+    if (err.response?.status === 429) {
+      window.dispatchEvent(new CustomEvent('api:rate-limited'));
+    }
     return Promise.reject(err);
   }
 );
@@ -53,6 +56,9 @@ export const api = {
 
   login: (req: LoginRequest) =>
     client.post<AuthResponse>('/auth/login', req).then((r) => r.data),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    client.post('/auth/change-password', { currentPassword, newPassword }),
 
   listDesigns: () =>
     client.get<{ items: Design[]; totalCount: number }>('/designs').then((r) => r.data),
@@ -95,8 +101,8 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
-  listVersions: (id: string) =>
-    client.get<DesignVersion[]>(`/designs/${id}/versions`).then((r) => r.data),
+  listVersions: (id: string, page = 1, pageSize = 100) =>
+    client.get<{ items: DesignVersion[]; totalCount: number }>(`/designs/${id}/versions`, { params: { page, pageSize } }).then((r) => r.data.items),
 
   createVersion: (id: string, label: string) =>
     client.post<DesignVersion>(`/designs/${id}/versions`, { label }).then((r) => r.data),

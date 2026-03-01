@@ -17,6 +17,7 @@ var migrateOnly = config.GetValue<bool>("MIGRATE_ONLY");
 builder.Host.UseSerilog((context, cfg) => cfg
     .ReadFrom.Configuration(context.Configuration));
 
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
@@ -149,6 +150,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseSerilogRequestLogging();
 app.UseCors();
 if (!app.Configuration.GetValue("DISABLE_RATE_LIMITING", false))

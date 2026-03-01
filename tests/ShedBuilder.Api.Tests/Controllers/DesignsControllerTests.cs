@@ -215,7 +215,26 @@ public class DesignsControllerTests : IDisposable
         var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
 
         var result = await _controller.ListVersions(id);
-        Assert.Empty(result.Value!);
+        var paginated = result.Value!;
+        Assert.Empty(paginated.Items);
+        Assert.Equal(0, paginated.TotalCount);
+    }
+
+    [Fact]
+    public async Task ListVersions_Pagination_ReturnsCorrectPage()
+    {
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        for (int i = 1; i <= 5; i++)
+            await _controller.CreateVersion(id, new CreateVersionRequest { Label = $"v{i}" });
+
+        var result = await _controller.ListVersions(id, page: 2, pageSize: 2);
+        var paginated = result.Value!;
+        Assert.Equal(2, paginated.Items.Count);
+        Assert.Equal(5, paginated.TotalCount);
+        Assert.Equal(2, paginated.Page);
+        Assert.Equal(2, paginated.PageSize);
     }
 
     [Fact]

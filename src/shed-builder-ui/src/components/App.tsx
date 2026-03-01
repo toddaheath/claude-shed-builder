@@ -14,6 +14,7 @@ import {
   Button,
   Alert,
   Paper,
+  Snackbar,
 } from '@mui/material';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
@@ -28,6 +29,7 @@ import { api, getStoredToken, setStoredToken } from '../services/api';
 import { useDesignApi } from '../hooks/useDesignApi';
 import { useAutoSave } from '../hooks/useAutoSave';
 import ShedViewer3D from './ShedViewer3D';
+import ErrorBoundary from './ErrorBoundary';
 import DesignPanel from './DesignPanel';
 import DesignList from './DesignList';
 import BomTable from './BomTable';
@@ -69,11 +71,11 @@ function RegisterScreen({
       const auth = await api.register({ name, email, password });
       onRegistered(auth.token);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        setError('An account with this email already exists.');
+      const resp = (err as { response?: { status?: number; data?: { detail?: string } } })?.response;
+      if (resp?.status === 409) {
+        setError(resp.data?.detail ?? 'An account with this email already exists.');
       } else {
-        setError('Registration failed. Please try again.');
+        setError(resp?.data?.detail ?? 'Registration failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -113,7 +115,8 @@ function RegisterScreen({
             onChange={(e) => setPassword(e.target.value)}
             fullWidth
             required
-            inputProps={{ minLength: 8 }}
+            inputProps={{ minLength: 12 }}
+            helperText="Min 12 characters, must include a digit and a special character"
             sx={{ mb: 3 }}
           />
           <Button type="submit" variant="contained" fullWidth disabled={loading}>
@@ -154,8 +157,9 @@ function LoginScreen({
     try {
       const auth = await api.login({ email, password });
       onLoggedIn(auth.token);
-    } catch {
-      setError('Invalid email or password.');
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail ?? 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -417,7 +421,9 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
       >
         {activeDesign ? (
           <Box sx={{ flexGrow: 1 }} aria-label="3D shed preview" role="img">
-            <ShedViewer3D design={activeDesign} darkMode={mode === 'dark'} />
+            <ErrorBoundary height="100%">
+              <ShedViewer3D design={activeDesign} darkMode={mode === 'dark'} />
+            </ErrorBoundary>
           </Box>
         ) : (
           <Box
@@ -502,6 +508,7 @@ export default function App() {
   const [mode, setMode] = useState<'light' | 'dark'>(() => getStoredMode() ?? (prefersDark ? 'dark' : 'light'));
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [showLogin, setShowLogin] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
 
   const theme = useMemo(() => createTheme({
     palette: {
@@ -526,6 +533,12 @@ export default function App() {
     const handler = () => setToken(null);
     window.addEventListener('auth:expired', handler);
     return () => window.removeEventListener('auth:expired', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setRateLimited(true);
+    window.addEventListener('api:rate-limited', handler);
+    return () => window.removeEventListener('api:rate-limited', handler);
   }, []);
 
   const handleAuthenticated = useCallback((t: string) => {
@@ -554,6 +567,11 @@ export default function App() {
           onShowLogin={() => setShowLogin(true)}
         />
       )}
+      <Snackbar open={rateLimited} autoHideDuration={5000} onClose={() => setRateLimited(false)}>
+        <Alert severity="warning" onClose={() => setRateLimited(false)}>
+          Too many requests. Please wait a moment before trying again.
+        </Alert>
+      </Snackbar>
     </ThemeProvider>
   );
 }
