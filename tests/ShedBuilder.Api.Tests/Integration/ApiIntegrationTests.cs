@@ -496,6 +496,37 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
+    public async Task UserIsolation_CannotAccessOtherUsersDesign()
+    {
+        // User A creates a design
+        var (_, clientA) = await CreateAuthenticatedUser("UserA", $"usera-{Guid.NewGuid()}@test.com");
+        var createA = await clientA.PostAsJsonAsync("/api/v1/designs",
+            new CreateDesignRequest { Name = "A's Shed" }, JsonOptions);
+        var designA = await ReadJson<DesignResponse>(createA.Content);
+
+        // User B tries to access User A's design
+        await CreateAuthenticatedUser("UserB", $"userb-{Guid.NewGuid()}@test.com");
+        var response = await _client.GetAsync($"/api/v1/designs/{designA!.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ListDesigns_Pagination_RespectsPageSize()
+    {
+        await CreateAuthenticatedUser("PageUser", $"page-{Guid.NewGuid()}@test.com");
+
+        for (int i = 0; i < 3; i++)
+            await _client.PostAsJsonAsync("/api/v1/designs",
+                new CreateDesignRequest { Name = $"PageTest-{i}" }, JsonOptions);
+
+        var response = await _client.GetAsync("/api/v1/designs?page=1&pageSize=2");
+        var paginated = await ReadJson<PaginatedResponse<DesignResponse>>(response.Content);
+
+        Assert.Equal(3, paginated!.TotalCount);
+        Assert.Equal(2, paginated.Items.Count);
+    }
+
+    [Fact]
     public async Task Create_OverlappingOpenings_Returns400()
     {
         await CreateAuthenticatedUser("OpenOverlap", $"openo-{Guid.NewGuid()}@test.com");
