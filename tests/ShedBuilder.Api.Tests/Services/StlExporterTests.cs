@@ -132,6 +132,62 @@ public class StlExporterTests
     }
 
     [Fact]
+    public void Export_WithInches_ProducesValidStl()
+    {
+        var design = new Design
+        {
+            Id = Guid.NewGuid(),
+            Name = "Inches Shed",
+            WidthFeet = 8,
+            WidthInches = 6,
+            DepthFeet = 10,
+            DepthInches = 3,
+            HeightFeet = 8,
+            HeightInches = 0,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+        };
+
+        var result = _exporter.Export(design);
+        var triangleCount = BitConverter.ToUInt32(result, 80);
+        var expectedLength = 84 + triangleCount * 50;
+        Assert.Equal(expectedLength, (uint)result.Length);
+    }
+
+    [Fact]
+    public void Export_SteepPitch_ProducesValidStl()
+    {
+        var design = new Design
+        {
+            Id = Guid.NewGuid(),
+            Name = "Steep Shed",
+            WidthFeet = 8,
+            WidthInches = 0,
+            DepthFeet = 10,
+            DepthInches = 0,
+            HeightFeet = 8,
+            HeightInches = 0,
+            RoofPitch = 12,
+            RoofType = RoofType.Gable,
+        };
+
+        var result = _exporter.Export(design);
+        Assert.True(result.Length >= 84);
+
+        // All normals should be finite
+        var triangleCount = BitConverter.ToUInt32(result, 80);
+        for (uint i = 0; i < triangleCount; i++)
+        {
+            var offset = 84 + i * 50;
+            for (int c = 0; c < 3; c++)
+            {
+                var n = BitConverter.ToSingle(result, (int)offset + c * 4);
+                Assert.False(float.IsNaN(n) || float.IsInfinity(n));
+            }
+        }
+    }
+
+    [Fact]
     public void Export_VerticesAreFinite()
     {
         var design = CreateDesign();
