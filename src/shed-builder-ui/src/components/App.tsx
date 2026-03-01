@@ -25,7 +25,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Design, UpdateDesignRequest } from '../types';
-import { api, getStoredToken, setStoredToken } from '../services/api';
+import { api, getStoredToken, setStoredToken, extractApiError } from '../services/api';
 import { useDesignApi } from '../hooks/useDesignApi';
 import { useAutoSave } from '../hooks/useAutoSave';
 import ShedViewer3D from './ShedViewer3D';
@@ -71,11 +71,11 @@ function RegisterScreen({
       const auth = await api.register({ name, email, password });
       onRegistered(auth.token);
     } catch (err: unknown) {
-      const resp = (err as { response?: { status?: number; data?: { detail?: string } } })?.response;
-      if (resp?.status === 409) {
-        setError(resp.data?.detail ?? 'An account with this email already exists.');
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setError(extractApiError(err, 'An account with this email already exists.'));
       } else {
-        setError(resp?.data?.detail ?? 'Registration failed. Please try again.');
+        setError(extractApiError(err, 'Registration failed. Please try again.'));
       }
     } finally {
       setLoading(false);
@@ -158,8 +158,7 @@ function LoginScreen({
       const auth = await api.login({ email, password });
       onLoggedIn(auth.token);
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail ?? 'Invalid email or password.');
+      setError(extractApiError(err, 'Invalid email or password.'));
     } finally {
       setLoading(false);
     }

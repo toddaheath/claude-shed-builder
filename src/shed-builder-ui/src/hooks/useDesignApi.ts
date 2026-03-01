@@ -37,10 +37,15 @@ export function useDesignApi() {
   }, []);
 
   const createDesign = useCallback(async (req: CreateDesignRequest) => {
-    const design = await api.createDesign(req);
-    setCurrentDesign(design);
-    await loadDesigns();
-    return design;
+    try {
+      const design = await api.createDesign(req);
+      setCurrentDesign(design);
+      await loadDesigns();
+      return design;
+    } catch {
+      setError('Failed to create design.');
+      return null;
+    }
   }, [loadDesigns]);
 
   const updateDesign = useCallback(async (id: string, req: UpdateDesignRequest) => {
@@ -78,13 +83,21 @@ export function useDesignApi() {
   }, []);
 
   const createVersion = useCallback(async (id: string, label: string) => {
-    await api.createVersion(id, label);
-    await loadVersions(id);
+    try {
+      await api.createVersion(id, label);
+      await loadVersions(id);
+    } catch {
+      setError('Failed to save version.');
+    }
   }, [loadVersions]);
 
   const restoreVersion = useCallback(async (designId: string, versionId: string) => {
-    const design = await api.restoreVersion(designId, versionId);
-    setCurrentDesign(design);
+    try {
+      const design = await api.restoreVersion(designId, versionId);
+      setCurrentDesign(design);
+    } catch {
+      setError('Failed to restore version.');
+    }
   }, []);
 
   useEffect(() => {

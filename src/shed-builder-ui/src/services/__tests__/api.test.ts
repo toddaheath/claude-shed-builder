@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { extractApiError } from '../api';
 
 // We need to test the interceptor behavior.
 // Since the interceptors are registered at module import time,
@@ -21,6 +22,29 @@ describe('api module', () => {
     expect(typeof module.api.createVersion).toBe('function');
     expect(typeof module.api.restoreVersion).toBe('function');
     expect(typeof module.api.changePassword).toBe('function');
+  });
+});
+
+describe('extractApiError', () => {
+  it('extracts detail from axios-style error', () => {
+    const err = { response: { data: { detail: 'Name is required.' } } };
+    expect(extractApiError(err, 'fallback')).toBe('Name is required.');
+  });
+
+  it('returns fallback when response has no detail', () => {
+    const err = { response: { data: {} } };
+    expect(extractApiError(err, 'fallback')).toBe('fallback');
+  });
+
+  it('returns fallback for non-object errors', () => {
+    expect(extractApiError('string error', 'fallback')).toBe('fallback');
+    expect(extractApiError(null, 'fallback')).toBe('fallback');
+    expect(extractApiError(undefined, 'fallback')).toBe('fallback');
+  });
+
+  it('returns fallback when no response property', () => {
+    const err = { message: 'Network Error' };
+    expect(extractApiError(err, 'fallback')).toBe('fallback');
   });
 });
 
