@@ -336,17 +336,18 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
 
   const handleCreateDesign = useCallback(
     (name: string) => {
-      createDesign({ name }).then((d) => setLocalDesign(d));
+      createDesign({ name }).then((d) => { if (d) setLocalDesign(d); });
     },
     [createDesign]
   );
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
-      <a href="#main-content" className="sr-only" style={{
+      <a href="#main-content" style={{
         position: 'absolute', left: '-9999px', top: 'auto', width: '1px', height: '1px',
-        overflow: 'hidden', zIndex: 9999,
-      }}>
+        overflow: 'hidden', zIndex: 9999, background: '#fff', padding: '8px 16px',
+      }} onFocus={(e) => { e.currentTarget.style.left = '8px'; e.currentTarget.style.top = '8px'; e.currentTarget.style.width = 'auto'; e.currentTarget.style.height = 'auto'; }}
+      onBlur={(e) => { e.currentTarget.style.left = '-9999px'; e.currentTarget.style.top = 'auto'; e.currentTarget.style.width = '1px'; e.currentTarget.style.height = '1px'; }}>
         Skip to main content
       </a>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>

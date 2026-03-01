@@ -135,7 +135,7 @@ public record PaginatedResponse<T>
 }
 
 public record RegisterRequest(
-    [Required] string Name,
+    [Required, MaxLength(200)] string Name,
     [Required, EmailAddress] string Email,
     [Required, MinLength(12)] string Password);
 
