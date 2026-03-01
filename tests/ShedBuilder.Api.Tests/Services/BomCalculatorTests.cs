@@ -295,6 +295,31 @@ public class BomCalculatorTests
     }
 
     [Fact]
+    public void Calculate_LeanToWithOpenings_ReturnsAllCategories()
+    {
+        var design = CreateDesign(roofType: RoofType.LeanTo);
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Front,
+            WidthInches = 36, HeightInches = 80, OffsetInches = 12, SillHeightInches = 0
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window, Wall = WallSide.Right,
+            WidthInches = 36, HeightInches = 24, OffsetInches = 24, SillHeightInches = 48
+        });
+
+        var result = _calculator.Calculate(design);
+
+        Assert.Contains(result.Items, i => i.Category == "Floor");
+        Assert.Contains(result.Items, i => i.Category == "Walls");
+        Assert.Contains(result.Items, i => i.Category == "Roof");
+        Assert.Contains(result.Items, i => i.Category == "Openings");
+        Assert.Contains(result.Items, i => i.Material == "Pre-hung door");
+        Assert.Contains(result.Items, i => i.Material == "Window unit");
+    }
+
+    [Fact]
     public void Calculate_WithOpenings_ReducesOsbSheathing()
     {
         var designNoOpenings = CreateDesign();
