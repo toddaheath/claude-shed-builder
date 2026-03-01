@@ -93,6 +93,7 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
               <IconButton
                 edge="end"
                 size="small"
+                aria-label={`Delete ${d.name}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeleteTarget({ id: d.id, name: d.name });

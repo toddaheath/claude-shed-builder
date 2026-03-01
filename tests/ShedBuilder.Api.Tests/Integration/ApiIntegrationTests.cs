@@ -445,6 +445,28 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
+    public async Task Create_ZeroDimensionOpening_Returns400()
+    {
+        await CreateAuthenticatedUser("ZeroDim", $"zerodim-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Zero Dimension Opening",
+            WidthFeet = 10,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, OffsetInches = 0, WidthInches = 0, HeightInches = 80, SillHeightInches = 0 }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_OverlappingOpenings_Returns400()
     {
         await CreateAuthenticatedUser("OpenOverlap", $"openo-{Guid.NewGuid()}@test.com");

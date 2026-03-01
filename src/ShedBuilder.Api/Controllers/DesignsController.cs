@@ -401,6 +401,14 @@ public class DesignsController : AuthenticatedControllerBase
 
         foreach (var opening in design.Openings)
         {
+            if (opening.WidthInches <= 0 || opening.HeightInches <= 0)
+                return BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Invalid opening",
+                    Detail = "Opening width and height must be greater than zero.",
+                });
+
             var wallWidth = opening.Wall is WallSide.Front or WallSide.Back ? widthInches : depthInches;
 
             if (opening.OffsetInches + opening.WidthInches > wallWidth)
