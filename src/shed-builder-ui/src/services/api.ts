@@ -50,6 +50,14 @@ client.interceptors.response.use(
   }
 );
 
+export function extractApiError(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const resp = (err as { response?: { data?: { detail?: string } } }).response;
+    if (resp?.data?.detail) return resp.data.detail;
+  }
+  return fallback;
+}
+
 export const api = {
   register: (req: RegisterRequest) =>
     client.post<AuthResponse>('/auth/register', req).then((r) => r.data),
