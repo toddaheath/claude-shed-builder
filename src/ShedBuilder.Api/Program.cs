@@ -90,8 +90,8 @@ builder.Services.AddCors(options =>
         if (corsOrigins.Length > 0)
         {
             policy.WithOrigins(corsOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                  .WithHeaders("Authorization", "Content-Type", "Accept");
         }
         else if (builder.Environment.IsDevelopment() || migrateOnly)
         {
