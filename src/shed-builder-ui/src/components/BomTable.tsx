@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import type { BomResponse, CostResponse } from '../types';
+import type { BomItem, BomResponse, CostBomItem, CostResponse } from '../types';
 import { api } from '../services/api';
 
 interface Props {
@@ -32,15 +32,12 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
     api.getCost(designId).then(setCost).catch(() => setCost(null));
   }, [designId, onLoadBom]);
 
-  const grouped = cost?.items.reduce<Record<string, typeof cost.items>>((acc, item) => {
-    (acc[item.category] ??= []).push(item);
-    return acc;
-  }, {}) ?? bom?.items.reduce<Record<string, typeof bom.items>>((acc, item) => {
+  const hasCost = cost !== null;
+  const sourceItems: (BomItem | CostBomItem)[] = cost?.items ?? bom?.items ?? [];
+  const grouped = sourceItems.reduce<Record<string, (BomItem | CostBomItem)[]>>((acc, item) => {
     (acc[item.category] ??= []).push(item);
     return acc;
   }, {});
-
-  const hasCost = cost !== null;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -66,7 +63,7 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
         </Stack>
       </Box>
 
-      {grouped && Object.entries(grouped).map(([category, items]) => (
+      {Object.entries(grouped).map(([category, items]) => (
         <Box key={category} mb={2}>
           <Typography variant="subtitle2" color="primary" gutterBottom>
             {category}
@@ -92,8 +89,8 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
                     <TableCell>{item.unit}</TableCell>
                     {hasCost && 'unitPrice' in item && (
                       <>
-                        <TableCell align="right">${(item as unknown as { unitPrice: number }).unitPrice.toFixed(0)}</TableCell>
-                        <TableCell align="right">${(item as unknown as { totalPrice: number }).totalPrice.toFixed(0)}</TableCell>
+                        <TableCell align="right">${(item as CostBomItem).unitPrice.toFixed(0)}</TableCell>
+                        <TableCell align="right">${(item as CostBomItem).totalPrice.toFixed(0)}</TableCell>
                       </>
                     )}
                   </TableRow>
