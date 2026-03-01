@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAutoSave } from '../useAutoSave';
 import { api } from '../../services/api';
+import type { Design } from '../../types';
 
 vi.mock('../../services/api', () => ({
   api: {
@@ -14,7 +15,7 @@ vi.mock('../../services/api', () => ({
 describe('useAutoSave', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.mocked(api.updateDesign).mockResolvedValue({} as any);
+    vi.mocked(api.updateDesign).mockResolvedValue({} as Design);
   });
 
   afterEach(() => {
@@ -29,7 +30,7 @@ describe('useAutoSave', () => {
 
   it('debounces save by 1500ms', async () => {
     const data = { name: 'Test' };
-    const { result } = renderHook(() => useAutoSave('design-1', data));
+    renderHook(() => useAutoSave('design-1', data));
 
     // Before debounce fires
     expect(api.updateDesign).not.toHaveBeenCalled();
@@ -45,7 +46,7 @@ describe('useAutoSave', () => {
   it('transitions through saving and saved states', async () => {
     let resolveUpdate: () => void;
     vi.mocked(api.updateDesign).mockImplementation(
-      () => new Promise<any>((resolve) => { resolveUpdate = () => resolve({} as any); })
+      () => new Promise<Design>((resolve) => { resolveUpdate = () => resolve({} as Design); })
     );
 
     const data = { name: 'Test' };
