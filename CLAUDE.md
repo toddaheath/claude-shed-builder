@@ -34,7 +34,8 @@ helm template deploy/helm/shed-builder
 ## Architecture
 
 - **src/ShedBuilder.Api/**: .NET 8 Web API with EF Core + PostgreSQL
-  - Controllers/DesignsController.cs: All REST endpoints
+  - Controllers/AuthController.cs: Register, login, and change-password endpoints
+  - Controllers/DesignsController.cs: All design REST endpoints
   - Services/BomCalculator.cs: Bill of materials calculation
   - Services/StlExporter.cs: Binary STL file generation
   - Services/MeasurementHelper.cs: Feet/inches conversions
@@ -56,3 +57,6 @@ helm template deploy/helm/shed-builder
 - Dimensions are stored as feet + inches (int pairs)
 - All NuGet packages pinned to 8.0.11 for EF Core compatibility
 - Rate limiting on auth endpoints (login: 5/min, register: 3/5min) — disabled in integration tests via `DISABLE_RATE_LIMITING=true` config flag
+- Auth endpoints: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/change-password` (requires `[Authorize]`)
+- Password requirements: min 12 characters, must include a digit and a special character
+- Error responses use ProblemDetails format (read `detail` field on the frontend)
