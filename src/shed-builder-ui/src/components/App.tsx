@@ -224,6 +224,8 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
     bom,
     versions,
     loading,
+    error: apiError,
+    clearError: clearApiError,
     setCurrentDesign,
     loadDesign,
     createDesign,
@@ -495,6 +497,16 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
           </Box>
         </Drawer>
       )}
+      <Snackbar
+        open={!!apiError}
+        autoHideDuration={5000}
+        onClose={clearApiError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={clearApiError} variant="filled">
+          {apiError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
