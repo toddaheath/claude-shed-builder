@@ -246,6 +246,61 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
+    public async Task GetCost_ReturnsCostWithGrandTotal()
+    {
+        await CreateAuthenticatedUser("Cost", $"cost-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Cost Test",
+            WidthFeet = 10,
+            DepthFeet = 12,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+
+        var costResponse = await _client.GetAsync($"/api/v1/designs/{design!.Id}/cost");
+        Assert.Equal(HttpStatusCode.OK, costResponse.StatusCode);
+
+        var cost = await ReadJson<CostResponse>(costResponse.Content);
+        Assert.NotNull(cost);
+        Assert.NotEmpty(cost.Items);
+        Assert.True(cost.GrandTotal > 0);
+    }
+
+    [Fact]
+    public async Task GetPdf_ReturnsValidPdf()
+    {
+        await CreateAuthenticatedUser("PDF", $"pdf-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "PDF Test",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+
+        var pdfResponse = await _client.GetAsync($"/api/v1/designs/{design!.Id}/pdf");
+        Assert.Equal(HttpStatusCode.OK, pdfResponse.StatusCode);
+        Assert.Equal("application/pdf", pdfResponse.Content.Headers.ContentType!.MediaType);
+
+        var bytes = await pdfResponse.Content.ReadAsByteArrayAsync();
+        // PDF files start with %PDF
+        Assert.True(bytes.Length > 4);
+        Assert.Equal((byte)'%', bytes[0]);
+        Assert.Equal((byte)'P', bytes[1]);
+        Assert.Equal((byte)'D', bytes[2]);
+        Assert.Equal((byte)'F', bytes[3]);
+    }
+
+    [Fact]
     public async Task Versions_CreateListRestore()
     {
         await CreateAuthenticatedUser("Versions", $"versions-{Guid.NewGuid()}@test.com");

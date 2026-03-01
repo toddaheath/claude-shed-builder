@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
+  Alert,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -26,11 +28,20 @@ interface Props {
 
 export default function BomTable({ designId, designName, bom, onLoadBom }: Props) {
   const [cost, setCost] = useState<CostResponse | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     onLoadBom(designId);
     api.getCost(designId).then(setCost).catch(() => setCost(null));
   }, [designId, onLoadBom]);
+
+  const handleDownloadPdf = () => {
+    api.downloadPdf(designId, designName).catch(() => setDownloadError('Failed to download PDF.'));
+  };
+
+  const handleDownloadStl = () => {
+    api.downloadStl(designId, designName).catch(() => setDownloadError('Failed to download STL.'));
+  };
 
   const hasCost = cost !== null;
   const sourceItems: (BomItem | CostBomItem)[] = cost?.items ?? bom?.items ?? [];
@@ -47,16 +58,18 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
           <Button
             variant="outlined"
             startIcon={<PictureAsPdfIcon />}
-            onClick={() => api.downloadPdf(designId, designName)}
+            onClick={handleDownloadPdf}
             size="small"
+            aria-label="Download PDF report"
           >
             PDF
           </Button>
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
-            onClick={() => api.downloadStl(designId, designName)}
+            onClick={handleDownloadStl}
             size="small"
+            aria-label="Download STL model"
           >
             STL
           </Button>
@@ -69,7 +82,7 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
             {category}
           </Typography>
           <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
+            <Table size="small" aria-label={`${category} materials`}>
               <TableHead>
                 <TableRow>
                   <TableCell>Material</TableCell>
@@ -108,6 +121,16 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
           </Typography>
         </Box>
       )}
+      <Snackbar
+        open={!!downloadError}
+        autoHideDuration={4000}
+        onClose={() => setDownloadError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setDownloadError(null)} variant="filled">
+          {downloadError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
