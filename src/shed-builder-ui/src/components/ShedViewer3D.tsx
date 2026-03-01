@@ -22,6 +22,108 @@ function getWallOpenings(openings: Opening[], wall: WallSide): Opening[] {
   return (openings || []).filter(o => o.wall === wall);
 }
 
+interface OpeningDetailProps {
+  ow: number;   // scaled opening width
+  oh: number;   // scaled opening height
+}
+
+function DoorOpening({ ow, oh }: OpeningDetailProps) {
+  const frameW = 0.04;
+  return (
+    <group>
+      {/* Dark cutout */}
+      <mesh position={[0, 0, 0.01]}>
+        <boxGeometry args={[ow, oh, 0.02]} />
+        <meshStandardMaterial color="#2C1810" />
+      </mesh>
+      {/* Door panel */}
+      <mesh position={[0, 0, 0.015]}>
+        <boxGeometry args={[ow - frameW * 2, oh - frameW * 2, 0.01]} />
+        <meshStandardMaterial color="#8B6842" />
+      </mesh>
+      {/* Frame — top */}
+      <mesh position={[0, oh / 2 - frameW / 2, 0.02]}>
+        <boxGeometry args={[ow, frameW, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Frame — bottom */}
+      <mesh position={[0, -oh / 2 + frameW / 2, 0.02]}>
+        <boxGeometry args={[ow, frameW, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Frame — left */}
+      <mesh position={[-ow / 2 + frameW / 2, 0, 0.02]}>
+        <boxGeometry args={[frameW, oh, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Frame — right */}
+      <mesh position={[ow / 2 - frameW / 2, 0, 0.02]}>
+        <boxGeometry args={[frameW, oh, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Handle */}
+      <mesh position={[ow / 2 - frameW - 0.06, 0, 0.035]}>
+        <sphereGeometry args={[0.03, 12, 12]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+    </group>
+  );
+}
+
+function WindowOpening({ ow, oh }: OpeningDetailProps) {
+  const frameW = 0.035;
+  const mullionW = 0.025;
+  return (
+    <group>
+      {/* Dark cutout */}
+      <mesh position={[0, 0, 0.01]}>
+        <boxGeometry args={[ow, oh, 0.02]} />
+        <meshStandardMaterial color="#2C1810" />
+      </mesh>
+      {/* Glass pane */}
+      <mesh position={[0, 0, 0.015]}>
+        <boxGeometry args={[ow - frameW * 2, oh - frameW * 2, 0.005]} />
+        <meshStandardMaterial color="#A8D8EA" transparent opacity={0.4} />
+      </mesh>
+      {/* Frame — top */}
+      <mesh position={[0, oh / 2 - frameW / 2, 0.02]}>
+        <boxGeometry args={[ow, frameW, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Frame — bottom */}
+      <mesh position={[0, -oh / 2 + frameW / 2, 0.02]}>
+        <boxGeometry args={[ow, frameW, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Frame — left */}
+      <mesh position={[-ow / 2 + frameW / 2, 0, 0.02]}>
+        <boxGeometry args={[frameW, oh, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Frame — right */}
+      <mesh position={[ow / 2 - frameW / 2, 0, 0.02]}>
+        <boxGeometry args={[frameW, oh, 0.015]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Mullion — horizontal */}
+      <mesh position={[0, 0, 0.025]}>
+        <boxGeometry args={[ow - frameW * 2, mullionW, 0.01]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Mullion — vertical */}
+      <mesh position={[0, 0, 0.025]}>
+        <boxGeometry args={[mullionW, oh - frameW * 2, 0.01]} />
+        <meshStandardMaterial color="#5C3A1E" />
+      </mesh>
+      {/* Sill */}
+      <mesh position={[0, -oh / 2 - 0.015, 0.025]}>
+        <boxGeometry args={[ow + 0.06, 0.03, 0.04]} />
+        <meshStandardMaterial color="#6B4A2E" />
+      </mesh>
+    </group>
+  );
+}
+
 function WallWithOpenings({
   wallWidthIn,
   wallHeightIn,
@@ -47,7 +149,7 @@ function WallWithOpenings({
         <meshStandardMaterial color="#F5DEB3" />
       </mesh>
 
-      {/* Opening cutouts rendered as dark boxes slightly in front */}
+      {/* Openings */}
       {openings.map((opening, i) => {
         const ow = scale(opening.widthInches);
         const oh = scale(opening.heightInches);
@@ -55,10 +157,11 @@ function WallWithOpenings({
         const oy = scale(opening.sillHeightInches + opening.heightInches / 2) - h / 2;
 
         return (
-          <mesh key={i} position={[ox, oy, wallThickness / 2 + 0.01]}>
-            <boxGeometry args={[ow, oh, 0.02]} />
-            <meshStandardMaterial color="#2C1810" />
-          </mesh>
+          <group key={i} position={[ox, oy, wallThickness / 2]}>
+            {opening.type === 'Door'
+              ? <DoorOpening ow={ow} oh={oh} />
+              : <WindowOpening ow={ow} oh={oh} />}
+          </group>
         );
       })}
     </group>
