@@ -548,4 +548,75 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task VersionRestore_PreservesOpenings()
+    {
+        await CreateAuthenticatedUser("VersionOpenings", $"vopen-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Version Openings Test",
+            WidthFeet = 10,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, OffsetInches = 12, WidthInches = 36, HeightInches = 80, SillHeightInches = 0 }
+            }
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+        var id = design!.Id;
+
+        // Save version with the door
+        await _client.PostAsJsonAsync($"/api/v1/designs/{id}/versions",
+            new CreateVersionRequest { Label = "With Door" }, JsonOptions);
+
+        // Remove the door
+        await _client.PutAsJsonAsync($"/api/v1/designs/{id}",
+            new UpdateDesignRequest { Openings = new List<OpeningDto>() }, JsonOptions);
+
+        // Restore the version
+        var versions = await _client.GetAsync($"/api/v1/designs/{id}/versions");
+        var versionPage = await ReadJson<PaginatedResponse<VersionResponse>>(versions.Content);
+        var restoreResponse = await _client.PostAsync(
+            $"/api/v1/designs/{id}/versions/{versionPage!.Items[0].Id}/restore", null);
+        var restored = await ReadJson<DesignResponse>(restoreResponse.Content);
+
+        Assert.Single(restored!.Openings);
+        Assert.Equal(OpeningType.Door, restored.Openings[0].Type);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithWrongCurrentPassword_Returns400()
+    {
+        await CreateAuthenticatedUser("WrongPw", $"wrongpw-{Guid.NewGuid()}@test.com");
+
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { currentPassword = "WrongPassword123!", newPassword = "NewPassword456@" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_InvalidOpenings_Returns400()
+    {
+        await CreateAuthenticatedUser("UpdateVal", $"updateval-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest { Name = "Update Validation" };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+
+        // Try to update with an opening that exceeds the wall width (default 8ft = 96 inches)
+        var update = new UpdateDesignRequest
+        {
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, OffsetInches = 60, WidthInches = 48, HeightInches = 80, SillHeightInches = 0 }
+            }
+        };
+        var response = await _client.PutAsJsonAsync($"/api/v1/designs/{design!.Id}", update, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }
