@@ -38,6 +38,18 @@ spec:
               value: {{ include "shed-builder.fullname" . }}
             - name: API_PORT
               value: {{ .Values.api.port | quote }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.ui.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.ui.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.ui.resources | nindent 12 }}
 {{- end }}

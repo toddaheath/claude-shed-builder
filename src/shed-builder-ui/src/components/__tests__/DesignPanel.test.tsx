@@ -65,4 +65,35 @@ describe('DesignPanel', () => {
     render(<DesignPanel design={designWithOpening} onChange={vi.fn()} saveStatus="idle" />);
     expect(screen.getByText('Door #1')).toBeInTheDocument();
   });
+
+  it('removes opening when delete button is clicked', async () => {
+    const onChange = vi.fn();
+    const designWithOpening = {
+      ...mockDesign,
+      openings: [
+        { type: 'Door' as const, wall: 'Front' as const, offsetInches: 24, widthInches: 36, heightInches: 80, sillHeightInches: 0 },
+        { type: 'Window' as const, wall: 'Left' as const, offsetInches: 12, widthInches: 36, heightInches: 36, sillHeightInches: 36 },
+      ],
+    };
+    render(<DesignPanel design={designWithOpening} onChange={onChange} saveStatus="idle" />);
+
+    // Click remove on the first opening (Door #1)
+    await userEvent.click(screen.getByLabelText('Remove Door #1'));
+    expect(onChange).toHaveBeenCalledWith({
+      openings: [designWithOpening.openings[1]],
+    });
+  });
+
+  it('shows all save statuses correctly', () => {
+    const statuses = ['idle', 'saving', 'saved', 'error'] as const;
+    const labels = ['Ready', 'Saving...', 'Saved', 'Error saving'];
+
+    statuses.forEach((status, i) => {
+      const { unmount } = render(
+        <DesignPanel design={mockDesign} onChange={vi.fn()} saveStatus={status} />
+      );
+      expect(screen.getByText(labels[i])).toBeInTheDocument();
+      unmount();
+    });
+  });
 });

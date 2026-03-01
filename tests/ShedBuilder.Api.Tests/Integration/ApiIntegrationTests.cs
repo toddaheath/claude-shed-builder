@@ -117,6 +117,35 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
+    public async Task ChangePassword_WithValidCredentials_Returns200()
+    {
+        var email = $"changepw-{Guid.NewGuid()}@test.com";
+        await CreateAuthenticatedUser("ChangePw", email);
+
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { currentPassword = "Password123!", newPassword = "NewPassword456@" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // Verify new password works by logging in
+        _client.DefaultRequestHeaders.Authorization = null;
+        var loginResponse = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { email, password = "NewPassword456@" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_DuplicateEmail_Returns409()
+    {
+        var email = $"dup-{Guid.NewGuid()}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = "First", email, password = "Password123!" }, JsonOptions);
+
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = "Second", email, password = "Password456@" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
     public async Task UnauthorizedRequest_Returns401()
     {
         _client.DefaultRequestHeaders.Authorization = null;
