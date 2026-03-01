@@ -20,9 +20,15 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: postgres
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        fsGroup: 70
       containers:
         - name: postgres
           image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: {{ .Values.postgres.port }}
           env:
