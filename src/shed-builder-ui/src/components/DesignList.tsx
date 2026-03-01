@@ -29,6 +29,7 @@ interface Props {
 export default function DesignList({ designs, selectedId, onSelect, onCreate, onDelete }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -64,7 +65,7 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDelete(d.id);
+                  setDeleteTarget({ id: d.id, name: d.name });
                 }}
               >
                 <DeleteIcon fontSize="small" />
@@ -79,6 +80,30 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
           No designs yet. Create one to get started.
         </Typography>
       )}
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>Delete Design</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              if (deleteTarget) {
+                onDelete(deleteTarget.id);
+                setDeleteTarget(null);
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
         <DialogTitle>New Design</DialogTitle>

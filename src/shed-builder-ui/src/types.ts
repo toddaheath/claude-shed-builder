@@ -95,6 +95,7 @@ export interface DesignVersion {
   heightInches: number;
   roofPitch: number;
   roofType: RoofType;
+  openings: Opening[];
   createdAt: string;
 }
 
