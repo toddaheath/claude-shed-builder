@@ -54,7 +54,7 @@ jobs:
 
   deploy-spa:
     name: Deploy SPA to Storage
-    needs: ci
+    needs: [ci, deploy]
     runs-on: ubuntu-latest
     environment: dev
 
