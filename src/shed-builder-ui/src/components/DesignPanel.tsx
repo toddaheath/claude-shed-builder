@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   Box,
   TextField,
@@ -22,7 +23,7 @@ interface Props {
   saveStatus: SaveStatus;
 }
 
-export default function DesignPanel({ design, onChange, saveStatus }: Props) {
+export default memo(function DesignPanel({ design, onChange, saveStatus }: Props) {
   const statusColor = {
     idle: 'default' as const,
     saving: 'warning' as const,
@@ -250,4 +251,4 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
       ))}
     </Box>
   );
-}
+});

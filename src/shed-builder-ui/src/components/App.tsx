@@ -468,7 +468,12 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
             <Tab label="BOM" id="tab-bom" aria-controls="tabpanel-bom" />
             <Tab label="Versions" id="tab-versions" aria-controls="tabpanel-versions" />
           </Tabs>
-          <Box sx={{ overflow: 'auto', flexGrow: 1 }} role="tabpanel">
+          <Box
+            sx={{ overflow: 'auto', flexGrow: 1 }}
+            role="tabpanel"
+            id={['tabpanel-design', 'tabpanel-bom', 'tabpanel-versions'][rightTab]}
+            aria-labelledby={['tab-design', 'tab-bom', 'tab-versions'][rightTab]}
+          >
             {rightTab === 0 && (
               <DesignPanel
                 design={activeDesign}
