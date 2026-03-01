@@ -35,15 +35,18 @@ helm template deploy/helm/shed-builder
 
 - **src/ShedBuilder.Api/**: .NET 8 Web API with EF Core + PostgreSQL
   - Controllers/AuthController.cs: Register, login, and change-password endpoints
-  - Controllers/DesignsController.cs: All design REST endpoints
-  - Services/BomCalculator.cs: Bill of materials calculation
+  - Controllers/DesignsController.cs: All design REST endpoints (CRUD, BOM, cost, STL, PDF, versions)
+  - Services/BomCalculator.cs: Bill of materials calculation (groups openings by actual dimensions)
+  - Services/PriceService.cs: Material unit prices for cost estimates
+  - Services/PdfExporter.cs: PDF report generation with cost breakdown
   - Services/StlExporter.cs: Binary STL file generation
   - Services/MeasurementHelper.cs: Feet/inches conversions
   - Data/ShedDbContext.cs: EF Core DbContext
 - **src/shed-builder-ui/**: React 18 + TypeScript SPA
-  - Uses React Three Fiber for 3D shed visualization
+  - Uses React Three Fiber for 3D shed visualization (doors, windows, shadows)
   - MUI for UI components
   - Vite for bundling (proxies /api to localhost:5000 in dev)
+  - Components: ShedViewer3D, DesignPanel, DesignList (with search), BomTable, VersionPanel
 - **tests/ShedBuilder.Api.Tests/**: xUnit tests (unit + integration)
   - Uses InMemory database for integration tests
 - **deploy/helm/shed-builder/**: Helm 3 chart for Kubernetes deployment

@@ -61,4 +61,56 @@ describe('DesignList', () => {
     await userEvent.click(screen.getByText('Shed A'));
     expect(onSelect).toHaveBeenCalledWith('1');
   });
+
+  it('shows confirmation dialog before deleting', async () => {
+    const onDelete = vi.fn();
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={onDelete}
+      />
+    );
+
+    // Click the delete icon for first design
+    const deleteButtons = screen.getAllByTestId('DeleteIcon');
+    await userEvent.click(deleteButtons[0]);
+
+    // Confirmation dialog should appear
+    expect(screen.getByText('Delete Design')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument();
+
+    // onDelete should NOT have been called yet
+    expect(onDelete).not.toHaveBeenCalled();
+
+    // Click Delete in the dialog
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    // Now onDelete should be called
+    expect(onDelete).toHaveBeenCalledWith('1');
+  });
+
+  it('cancels delete without calling onDelete', async () => {
+    const onDelete = vi.fn();
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={onDelete}
+      />
+    );
+
+    const deleteButtons = screen.getAllByTestId('DeleteIcon');
+    await userEvent.click(deleteButtons[0]);
+
+    expect(screen.getByText('Delete Design')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
 });
