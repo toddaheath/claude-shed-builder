@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   List,
   ListItemButton,
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
+  InputAdornment,
   TextField,
   Button,
   Box,
@@ -16,6 +17,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
 import type { Design } from '../types';
 
 interface Props {
@@ -30,6 +32,13 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return designs;
+    return designs.filter((d) => d.name.toLowerCase().includes(q));
+  }, [designs, search]);
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -48,8 +57,29 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
         </IconButton>
       </Box>
 
+      {designs.length > 3 && (
+        <Box px={1} mb={1}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search designs..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Box>
+      )}
+
       <List dense>
-        {designs.map((d) => (
+        {filtered.map((d) => (
           <ListItemButton
             key={d.id}
             selected={d.id === selectedId}

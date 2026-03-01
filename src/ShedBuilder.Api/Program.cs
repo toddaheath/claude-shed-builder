@@ -142,6 +142,10 @@ if (!migrateOnly)
         throw new InvalidOperationException(
             "Jwt:SecretKey must be configured and at least 32 characters. " +
             "Set it via environment variable Jwt__SecretKey or in appsettings.");
+    if (jwtSecret.Contains("CHANGE-ME", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException(
+            "Jwt:SecretKey still contains the placeholder value. " +
+            "Set a real secret via environment variable Jwt__SecretKey or Helm --set.");
 }
 
 if (app.Environment.IsDevelopment())

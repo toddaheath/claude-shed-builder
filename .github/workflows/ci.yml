@@ -16,21 +16,6 @@ jobs:
     name: Backend Build & Test
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: shed_builder_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -63,8 +48,6 @@ jobs:
           --results-directory ./test-results
 
       - name: Run integration tests
-        env:
-          ConnectionStrings__DefaultConnection: "Host=localhost;Database=shed_builder_test;Username=postgres;Password=postgres"
         run: >
           dotnet test ShedBuilder.sln
           --no-build
