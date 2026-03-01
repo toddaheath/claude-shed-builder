@@ -211,6 +211,18 @@ function LeanToTriangle({ w, rise }: { w: number; rise: number }) {
 }
 
 function ShedViewer3D({ design, darkMode = false }: Props) {
+  const wIn = toInches(design.widthFeet, design.widthInches);
+  const dIn = toInches(design.depthFeet, design.depthInches);
+  const hIn = toInches(design.heightFeet, design.heightInches);
+
+  if (wIn <= 0 || dIn <= 0 || hIn <= 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888' }}>
+        Invalid dimensions — width, depth, and height must be greater than zero.
+      </div>
+    );
+  }
+
   const bg = darkMode ? '#1a1210' : '#e8e8e8';
   const gridColors: [string, string] = darkMode ? ['#555', '#333'] : ['#999', '#ccc'];
 

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -45,8 +46,18 @@ public class AuthController : ControllerBase
         {
             var isDuplicate = result.Errors.Any(e => e.Code is "DuplicateUserName" or "DuplicateEmail");
             if (isDuplicate)
-                return Conflict(new { error = "A user with this email already exists." });
-            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+                return Conflict(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Conflict",
+                    Detail = "A user with this email already exists.",
+                });
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Validation failed",
+                Detail = string.Join(" ", result.Errors.Select(e => e.Description)),
+            });
         }
 
         return CreatedAtAction(nameof(Register), new AuthResponse(GenerateToken(user), user.Name, user.Email!));
@@ -58,15 +69,52 @@ public class AuthController : ControllerBase
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user == null)
-            return Unauthorized(new { error = "Invalid email or password." });
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "Invalid email or password.",
+            });
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
         if (result.IsLockedOut)
-            return Unauthorized(new { error = "Account locked due to too many failed attempts. Try again later." });
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "Account locked due to too many failed attempts. Try again later.",
+            });
         if (!result.Succeeded)
-            return Unauthorized(new { error = "Invalid email or password." });
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "Invalid email or password.",
+            });
 
         return new AuthResponse(GenerateToken(user), user.Name, user.Email!);
+    }
+
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return Unauthorized();
+
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Password change failed",
+                Detail = string.Join(" ", result.Errors.Select(e => e.Description)),
+            });
+
+        return Ok();
     }
 
     private string GenerateToken(ApplicationUser user)

@@ -262,11 +262,11 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         await _client.PutAsJsonAsync($"/api/v1/designs/{id}", new UpdateDesignRequest { WidthFeet = 20 }, JsonOptions);
 
         var listResponse = await _client.GetAsync($"/api/v1/designs/{id}/versions");
-        var versions = (await ReadJson<List<VersionResponse>>(listResponse.Content))!;
-        Assert.Single(versions);
-        Assert.Equal("Initial", versions[0].Label);
+        var versionPage = (await ReadJson<PaginatedResponse<VersionResponse>>(listResponse.Content))!;
+        Assert.Single(versionPage.Items);
+        Assert.Equal("Initial", versionPage.Items[0].Label);
 
-        var restoreResponse = await _client.PostAsync($"/api/v1/designs/{id}/versions/{versions[0].Id}/restore", null);
+        var restoreResponse = await _client.PostAsync($"/api/v1/designs/{id}/versions/{versionPage.Items[0].Id}/restore", null);
         Assert.Equal(HttpStatusCode.OK, restoreResponse.StatusCode);
 
         var restored = await ReadJson<DesignResponse>(restoreResponse.Content);
@@ -339,6 +339,73 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
             DepthFeet = 10,
             HeightFeet = 8,
             RoofPitch = 4,
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_OpeningExceedsWallWidth_Returns400()
+    {
+        await CreateAuthenticatedUser("OpenWidth", $"openw-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Bad Opening Width",
+            WidthFeet = 8, // 96 inches
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, OffsetInches = 60, WidthInches = 48, HeightInches = 80, SillHeightInches = 0 }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_OpeningExceedsWallHeight_Returns400()
+    {
+        await CreateAuthenticatedUser("OpenHeight", $"openh-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Bad Opening Height",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8, // 96 inches
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Window, Wall = WallSide.Front, OffsetInches = 0, WidthInches = 36, HeightInches = 48, SillHeightInches = 60 }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_OverlappingOpenings_Returns400()
+    {
+        await CreateAuthenticatedUser("OpenOverlap", $"openo-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Overlapping Openings",
+            WidthFeet = 10, // 120 inches
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, OffsetInches = 0, WidthInches = 36, HeightInches = 80, SillHeightInches = 0 },
+                new() { Type = OpeningType.Window, Wall = WallSide.Front, OffsetInches = 24, WidthInches = 36, HeightInches = 36, SillHeightInches = 36 }
+            }
         };
 
         var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);

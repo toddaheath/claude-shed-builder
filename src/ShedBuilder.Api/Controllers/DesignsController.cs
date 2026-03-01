@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShedBuilder.Api.Data;
@@ -109,6 +110,9 @@ public class DesignsController : AuthenticatedControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
+        var validationError = ValidateOpenings(design);
+        if (validationError != null) return validationError;
+
         _db.Designs.Add(design);
         await _db.SaveChangesAsync();
 
@@ -145,6 +149,9 @@ public class DesignsController : AuthenticatedControllerBase
             }).ToList();
         }
         design.UpdatedAt = DateTime.UtcNow;
+
+        var validationError = ValidateOpenings(design);
+        if (validationError != null) return validationError;
 
         await _db.SaveChangesAsync();
         return MapToResponse(design);
@@ -236,18 +243,36 @@ public class DesignsController : AuthenticatedControllerBase
     }
 
     [HttpGet("{id:guid}/versions")]
-    public async Task<ActionResult<List<VersionResponse>>> ListVersions(Guid id)
+    public async Task<ActionResult<PaginatedResponse<VersionResponse>>> ListVersions(
+        Guid id,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
     {
         var (user, authError) = await GetCurrentUser();
         if (user == null) return authError!;
         var designExists = await _db.Designs.AnyAsync(d => d.Id == id && d.UserId == user.Id);
         if (!designExists) return NotFound();
 
-        var versions = await _db.DesignVersions
-            .Where(v => v.DesignId == id)
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 1;
+        if (pageSize > 100) pageSize = 100;
+
+        var query = _db.DesignVersions.Where(v => v.DesignId == id);
+        var totalCount = await query.CountAsync();
+
+        var versions = await query
             .OrderByDescending(v => v.VersionNumber)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
-        return versions.Select(MapVersionResponse).ToList();
+
+        return new PaginatedResponse<VersionResponse>
+        {
+            Items = versions.Select(MapVersionResponse).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     [HttpPost("{id:guid}/versions")]
@@ -367,6 +392,55 @@ public class DesignsController : AuthenticatedControllerBase
         CreatedAt = d.CreatedAt,
         UpdatedAt = d.UpdatedAt
     };
+
+    private ActionResult? ValidateOpenings(Design design)
+    {
+        var widthInches = design.WidthFeet * 12 + design.WidthInches;
+        var depthInches = design.DepthFeet * 12 + design.DepthInches;
+        var heightInches = design.HeightFeet * 12 + design.HeightInches;
+
+        foreach (var opening in design.Openings)
+        {
+            var wallWidth = opening.Wall is WallSide.Front or WallSide.Back ? widthInches : depthInches;
+
+            if (opening.OffsetInches + opening.WidthInches > wallWidth)
+                return BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Invalid opening",
+                    Detail = $"Opening exceeds wall width on {opening.Wall} wall.",
+                });
+
+            if (opening.SillHeightInches + opening.HeightInches > heightInches)
+                return BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Invalid opening",
+                    Detail = $"Opening exceeds wall height on {opening.Wall} wall.",
+                });
+        }
+
+        // Check for overlapping openings on the same wall
+        var wallGroups = design.Openings.GroupBy(o => o.Wall);
+        foreach (var group in wallGroups)
+        {
+            var sorted = group.OrderBy(o => o.OffsetInches).ToList();
+            for (int i = 0; i < sorted.Count - 1; i++)
+            {
+                var current = sorted[i];
+                var next = sorted[i + 1];
+                if (current.OffsetInches + current.WidthInches > next.OffsetInches)
+                    return BadRequest(new ProblemDetails
+                    {
+                        Status = StatusCodes.Status400BadRequest,
+                        Title = "Invalid opening",
+                        Detail = $"Overlapping openings on {group.Key} wall.",
+                    });
+            }
+        }
+
+        return null;
+    }
 
     private static VersionResponse MapVersionResponse(DesignVersion v) => new()
     {

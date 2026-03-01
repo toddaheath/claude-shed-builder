@@ -10,10 +10,14 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --gid 1001 appgroup && \
     adduser --uid 1001 --ingroup appgroup --disabled-password --gecos "" appuser
 USER appuser
 
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8080/health/live || exit 1
 ENTRYPOINT ["dotnet", "ShedBuilder.Api.dll"]

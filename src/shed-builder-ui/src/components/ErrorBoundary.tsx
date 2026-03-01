@@ -4,6 +4,7 @@ import { Box, Typography, Button } from '@mui/material';
 
 interface Props {
   children: ReactNode;
+  height?: string;
 }
 
 interface State {
@@ -34,7 +35,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           flexDirection="column"
           alignItems="center"
           justifyContent="center"
-          height="100vh"
+          height={this.props.height ?? '100vh'}
           gap={2}
           p={4}
         >
