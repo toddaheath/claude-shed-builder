@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import {
   Alert,
   Snackbar,
@@ -26,7 +26,7 @@ interface Props {
   onLoadBom: (id: string) => void;
 }
 
-export default function BomTable({ designId, designName, bom, onLoadBom }: Props) {
+export default memo(function BomTable({ designId, designName, bom, onLoadBom }: Props) {
   const [cost, setCost] = useState<CostResponse | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -133,4 +133,4 @@ export default function BomTable({ designId, designName, bom, onLoadBom }: Props
       </Snackbar>
     </Box>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -25,7 +25,7 @@ interface Props {
   onRestoreVersion: (designId: string, versionId: string) => void;
 }
 
-export default function VersionPanel({
+export default memo(function VersionPanel({
   designId,
   versions,
   onLoadVersions,
@@ -127,4 +127,4 @@ export default function VersionPanel({
       </Dialog>
     </Box>
   );
-}
+});

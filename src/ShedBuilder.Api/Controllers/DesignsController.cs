@@ -44,7 +44,7 @@ public class DesignsController : AuthenticatedControllerBase
         if (pageSize < 1) pageSize = 1;
         if (pageSize > 100) pageSize = 100;
 
-        var query = _db.Designs.Where(d => d.UserId == user.Id);
+        var query = _db.Designs.AsNoTracking().Where(d => d.UserId == user.Id);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -74,7 +74,7 @@ public class DesignsController : AuthenticatedControllerBase
     {
         var (user, authError) = await GetCurrentUser();
         if (user == null) return authError!;
-        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        var design = await _db.Designs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
         return MapToResponse(design);
     }
@@ -175,7 +175,7 @@ public class DesignsController : AuthenticatedControllerBase
     {
         var (user, authError) = await GetCurrentUser();
         if (user == null) return authError!;
-        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        var design = await _db.Designs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
         return _bom.Calculate(design);
     }
@@ -185,7 +185,7 @@ public class DesignsController : AuthenticatedControllerBase
     {
         var (user, authError) = await GetCurrentUser();
         if (user == null) return authError!;
-        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        var design = await _db.Designs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         var bytes = _stl.Export(design);
@@ -197,7 +197,7 @@ public class DesignsController : AuthenticatedControllerBase
     {
         var (user, authError) = await GetCurrentUser();
         if (user == null) return authError!;
-        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        var design = await _db.Designs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         return BuildCostResponse(design);
@@ -208,7 +208,7 @@ public class DesignsController : AuthenticatedControllerBase
     {
         var (user, authError) = await GetCurrentUser();
         if (user == null) return authError!;
-        var design = await _db.Designs.FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
+        var design = await _db.Designs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id && d.UserId == user.Id);
         if (design == null) return NotFound();
 
         var costResponse = BuildCostResponse(design);
@@ -257,7 +257,7 @@ public class DesignsController : AuthenticatedControllerBase
         if (pageSize < 1) pageSize = 1;
         if (pageSize > 100) pageSize = 100;
 
-        var query = _db.DesignVersions.Where(v => v.DesignId == id);
+        var query = _db.DesignVersions.AsNoTracking().Where(v => v.DesignId == id);
         var totalCount = await query.CountAsync();
 
         var versions = await query
@@ -327,7 +327,7 @@ public class DesignsController : AuthenticatedControllerBase
         var designExists = await _db.Designs.AnyAsync(d => d.Id == id && d.UserId == user.Id);
         if (!designExists) return NotFound();
 
-        var version = await _db.DesignVersions
+        var version = await _db.DesignVersions.AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == vid && v.DesignId == id);
         if (version == null) return NotFound();
         return MapVersionResponse(version);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import {
   List,
   ListItemButton,
@@ -28,7 +28,7 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-export default function DesignList({ designs, selectedId, onSelect, onCreate, onDelete }: Props) {
+export default memo(function DesignList({ designs, selectedId, onSelect, onCreate, onDelete }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -156,4 +156,4 @@ export default function DesignList({ designs, selectedId, onSelect, onCreate, on
       </Dialog>
     </Box>
   );
-}
+});
