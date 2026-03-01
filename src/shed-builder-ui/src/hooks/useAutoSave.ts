@@ -6,6 +6,16 @@ export function useAutoSave(designId: string | null, data: UpdateDesignRequest |
   const [status, setStatus] = useState<SaveStatus>('idle');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>('');
+  const [prevDesignId, setPrevDesignId] = useState(designId);
+
+  if (prevDesignId !== designId) {
+    setPrevDesignId(designId);
+    setStatus('idle');
+  }
+
+  useEffect(() => {
+    lastSavedRef.current = '';
+  }, [designId]);
 
   const save = useCallback(async (id: string, req: UpdateDesignRequest) => {
     setStatus('saving');
@@ -17,10 +27,6 @@ export function useAutoSave(designId: string | null, data: UpdateDesignRequest |
       setStatus('error');
     }
   }, []);
-
-  useEffect(() => {
-    lastSavedRef.current = '';
-  }, [designId]);
 
   useEffect(() => {
     if (!designId || !data) return;

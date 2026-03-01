@@ -49,9 +49,14 @@ export function useDesignApi() {
   }, [loadDesigns]);
 
   const updateDesign = useCallback(async (id: string, req: UpdateDesignRequest) => {
-    const design = await api.updateDesign(id, req);
-    setCurrentDesign(design);
-    return design;
+    try {
+      const design = await api.updateDesign(id, req);
+      setCurrentDesign(design);
+      return design;
+    } catch {
+      setError('Failed to update design.');
+      return null;
+    }
   }, []);
 
   const deleteDesign = useCallback(async (id: string) => {
