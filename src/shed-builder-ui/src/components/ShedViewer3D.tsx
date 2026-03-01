@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { Design, Opening, WallSide } from '../types';
@@ -318,6 +318,18 @@ function ShedViewer3D({ design, darkMode = false }: Props) {
   const dIn = toInches(design.depthFeet, design.depthInches);
   const hIn = toInches(design.heightFeet, design.heightInches);
 
+  // Scale camera position based on shed size so it frames well at any size
+  const camPos = useMemo((): [number, number, number] => {
+    const maxDim = Math.max(scale(wIn), scale(dIn), scale(hIn));
+    const dist = maxDim * 1.8 + 4;
+    return [dist, dist * 0.8, dist];
+  }, [wIn, dIn, hIn]);
+
+  const gridSize = useMemo(() => {
+    const maxDim = Math.max(scale(wIn), scale(dIn));
+    return Math.max(30, Math.ceil(maxDim * 2 + 10));
+  }, [wIn, dIn]);
+
   if (wIn <= 0 || dIn <= 0 || hIn <= 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888' }}>
@@ -331,13 +343,13 @@ function ShedViewer3D({ design, darkMode = false }: Props) {
 
   return (
     <Canvas
-      camera={{ position: [15, 12, 15], fov: 50 }}
+      camera={{ position: camPos, fov: 50 }}
       style={{ background: bg }}
     >
       <ambientLight intensity={darkMode ? 0.4 : 0.5} />
       <directionalLight position={[10, 10, 5]} intensity={darkMode ? 0.8 : 1} />
       <ShedGeometry design={design} />
-      <gridHelper args={[30, 30, gridColors[0], gridColors[1]]} />
+      <gridHelper args={[gridSize, gridSize, gridColors[0], gridColors[1]]} />
       <OrbitControls />
     </Canvas>
   );

@@ -287,28 +287,35 @@ public class BomCalculator : IBomCalculator
         var items = new List<BomItem>();
         if (openings.Count == 0) return items;
 
-        var doorCount = openings.Count(o => o.Type == OpeningType.Door);
-        var windowCount = openings.Count(o => o.Type == OpeningType.Window);
+        // Group doors by dimensions so each distinct size gets its own line
+        var doorGroups = openings
+            .Where(o => o.Type == OpeningType.Door)
+            .GroupBy(o => (o.WidthInches, o.HeightInches));
 
-        if (doorCount > 0)
+        foreach (var group in doorGroups)
         {
             items.Add(new BomItem
             {
                 Material = "Pre-hung door",
-                Dimensions = "36\" × 80\"",
-                Quantity = doorCount,
+                Dimensions = $"{group.Key.WidthInches}\" × {group.Key.HeightInches}\"",
+                Quantity = group.Count(),
                 Unit = "units",
                 Category = "Openings"
             });
         }
 
-        if (windowCount > 0)
+        // Group windows by dimensions
+        var windowGroups = openings
+            .Where(o => o.Type == OpeningType.Window)
+            .GroupBy(o => (o.WidthInches, o.HeightInches));
+
+        foreach (var group in windowGroups)
         {
             items.Add(new BomItem
             {
                 Material = "Window unit",
-                Dimensions = "36\" × 24\"",
-                Quantity = windowCount,
+                Dimensions = $"{group.Key.WidthInches}\" × {group.Key.HeightInches}\"",
+                Quantity = group.Count(),
                 Unit = "units",
                 Category = "Openings"
             });

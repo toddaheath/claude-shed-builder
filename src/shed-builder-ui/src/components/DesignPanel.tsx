@@ -212,7 +212,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
               size="small"
               value={opening.widthInches}
               onChange={(e) => updateOpening(index, { widthInches: Number(e.target.value) })}
-              inputProps={{ min: 12, max: 96 }}
+              inputProps={{ min: 12, max: 120 }}
               sx={{ flex: 1 }}
             />
             <TextField
@@ -221,7 +221,7 @@ export default function DesignPanel({ design, onChange, saveStatus }: Props) {
               size="small"
               value={opening.heightInches}
               onChange={(e) => updateOpening(index, { heightInches: Number(e.target.value) })}
-              inputProps={{ min: 12, max: 96 }}
+              inputProps={{ min: 12, max: 120 }}
               sx={{ flex: 1 }}
             />
           </Stack>

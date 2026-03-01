@@ -174,4 +174,142 @@ public class BomCalculatorTests
         var steepShingles = steepResult.Items.First(i => i.Material == "Asphalt shingles");
         Assert.True(steepShingles.Quantity >= lowShingles.Quantity);
     }
+
+    [Fact]
+    public void Calculate_WithDoor_UsesActualDimensions()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door,
+            Wall = WallSide.Front,
+            WidthInches = 48,
+            HeightInches = 84,
+            OffsetInches = 12,
+            SillHeightInches = 0
+        });
+
+        var result = _calculator.Calculate(design);
+
+        var door = result.Items.First(i => i.Material == "Pre-hung door");
+        Assert.Equal("48\" × 84\"", door.Dimensions);
+        Assert.Equal(1, door.Quantity);
+    }
+
+    [Fact]
+    public void Calculate_WithWindow_UsesActualDimensions()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window,
+            Wall = WallSide.Right,
+            WidthInches = 30,
+            HeightInches = 24,
+            OffsetInches = 24,
+            SillHeightInches = 48
+        });
+
+        var result = _calculator.Calculate(design);
+
+        var window = result.Items.First(i => i.Material == "Window unit");
+        Assert.Equal("30\" × 24\"", window.Dimensions);
+        Assert.Equal(1, window.Quantity);
+    }
+
+    [Fact]
+    public void Calculate_WithOpenings_HasOpeningsCategory()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door,
+            Wall = WallSide.Front,
+            WidthInches = 36,
+            HeightInches = 80,
+            OffsetInches = 12,
+            SillHeightInches = 0
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window,
+            Wall = WallSide.Right,
+            WidthInches = 36,
+            HeightInches = 24,
+            OffsetInches = 24,
+            SillHeightInches = 48
+        });
+
+        var result = _calculator.Calculate(design);
+
+        var openingItems = result.Items.Where(i => i.Category == "Openings").ToList();
+        Assert.Contains(openingItems, i => i.Material == "Pre-hung door");
+        Assert.Contains(openingItems, i => i.Material == "Window unit");
+        Assert.Contains(openingItems, i => i.Material == "Header lumber");
+        Assert.Equal(4, openingItems.First(i => i.Material == "Header lumber").Quantity);
+    }
+
+    [Fact]
+    public void Calculate_MultipleSameSizeDoors_GroupedIntoOneLine()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Front,
+            WidthInches = 36, HeightInches = 80, OffsetInches = 0, SillHeightInches = 0
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Back,
+            WidthInches = 36, HeightInches = 80, OffsetInches = 0, SillHeightInches = 0
+        });
+
+        var result = _calculator.Calculate(design);
+
+        var doors = result.Items.Where(i => i.Material == "Pre-hung door").ToList();
+        Assert.Single(doors);
+        Assert.Equal(2, doors[0].Quantity);
+    }
+
+    [Fact]
+    public void Calculate_DifferentSizeDoors_SeparateLines()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Front,
+            WidthInches = 36, HeightInches = 80, OffsetInches = 0, SillHeightInches = 0
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Back,
+            WidthInches = 72, HeightInches = 84, OffsetInches = 0, SillHeightInches = 0
+        });
+
+        var result = _calculator.Calculate(design);
+
+        var doors = result.Items.Where(i => i.Material == "Pre-hung door").ToList();
+        Assert.Equal(2, doors.Count);
+        Assert.Contains(doors, d => d.Dimensions == "36\" × 80\"");
+        Assert.Contains(doors, d => d.Dimensions == "72\" × 84\"");
+    }
+
+    [Fact]
+    public void Calculate_WithOpenings_ReducesOsbSheathing()
+    {
+        var designNoOpenings = CreateDesign();
+        var designWithOpenings = CreateDesign();
+        designWithOpenings.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Front,
+            WidthInches = 36, HeightInches = 80, OffsetInches = 12, SillHeightInches = 0
+        });
+
+        var noOpeningsOsb = _calculator.Calculate(designNoOpenings).Items
+            .First(i => i.Material == "OSB sheathing").Quantity;
+        var withOpeningsOsb = _calculator.Calculate(designWithOpenings).Items
+            .First(i => i.Material == "OSB sheathing").Quantity;
+
+        Assert.True(withOpeningsOsb <= noOpeningsOsb);
+    }
 }

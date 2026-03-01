@@ -14,6 +14,11 @@ public class PriceServiceTests
     [InlineData("Asphalt shingles", 35.00)]
     [InlineData("Pre-hung door", 185.00)]
     [InlineData("Window unit", 125.00)]
+    [InlineData("Header lumber", 12.00)]
+    [InlineData("Joist hangers", 2.50)]
+    [InlineData("Hurricane ties", 1.75)]
+    [InlineData("Framing nails", 6.00)]
+    [InlineData("Structural screws", 8.00)]
     public void GetUnitPrice_KnownMaterial_ReturnsPrice(string material, decimal expectedPrice)
     {
         var price = _service.GetUnitPrice(material, "any");

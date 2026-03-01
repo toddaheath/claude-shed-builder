@@ -60,7 +60,7 @@ public class AuthController : ControllerBase
             });
         }
 
-        return CreatedAtAction(nameof(Register), new AuthResponse(GenerateToken(user), user.Name, user.Email!));
+        return StatusCode(StatusCodes.Status201Created, new AuthResponse(GenerateToken(user), user.Name, user.Email!));
     }
 
     [HttpPost("login")]
