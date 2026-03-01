@@ -8,12 +8,17 @@ export function useDesignApi() {
   const [bom, setBom] = useState<BomResponse | null>(null);
   const [versions, setVersions] = useState<DesignVersion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const clearError = useCallback(() => setError(null), []);
 
   const loadDesigns = useCallback(async () => {
     setLoading(true);
     try {
       const result = await api.listDesigns();
       setDesigns(result.items);
+    } catch {
+      setError('Failed to load designs.');
     } finally {
       setLoading(false);
     }
@@ -24,6 +29,8 @@ export function useDesignApi() {
     try {
       const design = await api.getDesign(id);
       setCurrentDesign(design);
+    } catch {
+      setError('Failed to load design.');
     } finally {
       setLoading(false);
     }
@@ -43,19 +50,31 @@ export function useDesignApi() {
   }, []);
 
   const deleteDesign = useCallback(async (id: string) => {
-    await api.deleteDesign(id);
-    if (currentDesign?.id === id) setCurrentDesign(null);
-    await loadDesigns();
+    try {
+      await api.deleteDesign(id);
+      if (currentDesign?.id === id) setCurrentDesign(null);
+      await loadDesigns();
+    } catch {
+      setError('Failed to delete design.');
+    }
   }, [currentDesign, loadDesigns]);
 
   const loadBom = useCallback(async (id: string) => {
-    const bomData = await api.getBom(id);
-    setBom(bomData);
+    try {
+      const bomData = await api.getBom(id);
+      setBom(bomData);
+    } catch {
+      setError('Failed to load bill of materials.');
+    }
   }, []);
 
   const loadVersions = useCallback(async (id: string) => {
-    const v = await api.listVersions(id);
-    setVersions(v);
+    try {
+      const v = await api.listVersions(id);
+      setVersions(v);
+    } catch {
+      setError('Failed to load versions.');
+    }
   }, []);
 
   const createVersion = useCallback(async (id: string, label: string) => {
@@ -78,6 +97,8 @@ export function useDesignApi() {
     bom,
     versions,
     loading,
+    error,
+    clearError,
     setCurrentDesign,
     loadDesigns,
     loadDesign,
