@@ -49,7 +49,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install dependencies
         run: npm ci
@@ -103,7 +103,7 @@ jobs:
         run: docker build -f ${{ matrix.dockerfile }} -t ${{ matrix.image }}:scan .
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.31.0
         with:
           image-ref: "${{ matrix.image }}:scan"
           format: "sarif"

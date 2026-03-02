@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BomTable from '../BomTable';
 import type { BomResponse, CostResponse } from '../../types';
@@ -84,6 +85,38 @@ describe('BomTable', () => {
 
     expect(screen.getByText('PDF')).toBeInTheDocument();
     expect(screen.getByText('STL')).toBeInTheDocument();
+  });
+
+  it('shows error snackbar when PDF download fails', async () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+    mockedApi.downloadPdf.mockRejectedValue(new Error('download failed'));
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    const pdfButton = screen.getByRole('button', { name: /Download PDF/i });
+    await userEvent.click(pdfButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to download PDF.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error snackbar when STL download fails', async () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+    mockedApi.downloadStl.mockRejectedValue(new Error('download failed'));
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    const stlButton = screen.getByRole('button', { name: /Download STL/i });
+    await userEvent.click(stlButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to download STL.')).toBeInTheDocument();
+    });
   });
 
   it('groups items by category', async () => {
