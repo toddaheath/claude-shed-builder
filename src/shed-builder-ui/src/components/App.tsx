@@ -422,7 +422,10 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
         }}
       >
         {activeDesign ? (
-          <Box sx={{ flexGrow: 1 }} aria-label="3D shed preview" role="img">
+          <Box sx={{ flexGrow: 1, position: 'relative' }} aria-label="3D shed preview" role="img">
+            <span style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
+              {`3D preview of ${activeDesign.name}: ${activeDesign.widthFeet}'${activeDesign.widthInches ? activeDesign.widthInches + '"' : ''} wide × ${activeDesign.depthFeet}'${activeDesign.depthInches ? activeDesign.depthInches + '"' : ''} deep × ${activeDesign.heightFeet}'${activeDesign.heightInches ? activeDesign.heightInches + '"' : ''} tall, ${activeDesign.roofType} roof`}
+            </span>
             <ErrorBoundary height="100%">
               <ShedViewer3D design={activeDesign} darkMode={mode === 'dark'} />
             </ErrorBoundary>

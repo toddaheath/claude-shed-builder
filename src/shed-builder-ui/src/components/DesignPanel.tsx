@@ -76,15 +76,15 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
         sx={{ mb: 2 }}
       />
 
-      <Typography variant="subtitle2" gutterBottom>Width</Typography>
-      <Stack direction="row" spacing={1} mb={2}>
+      <Typography variant="subtitle2" gutterBottom id="width-label">Width</Typography>
+      <Stack direction="row" spacing={1} mb={2} role="group" aria-labelledby="width-label">
         <TextField
           label="Feet"
           type="number"
           size="small"
           value={design.widthFeet}
           onChange={(e) => onChange({ widthFeet: Number(e.target.value) })}
-          inputProps={{ min: 4, max: 60 }}
+          inputProps={{ min: 4, max: 60, 'aria-label': 'Width feet' }}
         />
         <TextField
           label="Inches"
@@ -92,19 +92,19 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
           size="small"
           value={design.widthInches}
           onChange={(e) => onChange({ widthInches: Number(e.target.value) })}
-          inputProps={{ min: 0, max: 11 }}
+          inputProps={{ min: 0, max: 11, 'aria-label': 'Width inches' }}
         />
       </Stack>
 
-      <Typography variant="subtitle2" gutterBottom>Depth</Typography>
-      <Stack direction="row" spacing={1} mb={2}>
+      <Typography variant="subtitle2" gutterBottom id="depth-label">Depth</Typography>
+      <Stack direction="row" spacing={1} mb={2} role="group" aria-labelledby="depth-label">
         <TextField
           label="Feet"
           type="number"
           size="small"
           value={design.depthFeet}
           onChange={(e) => onChange({ depthFeet: Number(e.target.value) })}
-          inputProps={{ min: 4, max: 60 }}
+          inputProps={{ min: 4, max: 60, 'aria-label': 'Depth feet' }}
         />
         <TextField
           label="Inches"
@@ -112,19 +112,19 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
           size="small"
           value={design.depthInches}
           onChange={(e) => onChange({ depthInches: Number(e.target.value) })}
-          inputProps={{ min: 0, max: 11 }}
+          inputProps={{ min: 0, max: 11, 'aria-label': 'Depth inches' }}
         />
       </Stack>
 
-      <Typography variant="subtitle2" gutterBottom>Wall Height</Typography>
-      <Stack direction="row" spacing={1} mb={2}>
+      <Typography variant="subtitle2" gutterBottom id="height-label">Wall Height</Typography>
+      <Stack direction="row" spacing={1} mb={2} role="group" aria-labelledby="height-label">
         <TextField
           label="Feet"
           type="number"
           size="small"
           value={design.heightFeet}
           onChange={(e) => onChange({ heightFeet: Number(e.target.value) })}
-          inputProps={{ min: 6, max: 20 }}
+          inputProps={{ min: 6, max: 20, 'aria-label': 'Wall height feet' }}
         />
         <TextField
           label="Inches"
@@ -132,7 +132,7 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
           size="small"
           value={design.heightInches}
           onChange={(e) => onChange({ heightInches: Number(e.target.value) })}
-          inputProps={{ min: 0, max: 11 }}
+          inputProps={{ min: 0, max: 11, 'aria-label': 'Wall height inches' }}
         />
       </Stack>
 
@@ -169,7 +169,7 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
       </Stack>
 
       {(design.openings || []).map((opening, index) => (
-        <Box key={index} sx={{ mb: 2, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+        <Box key={`${opening.type}-${opening.wall}-${index}`} sx={{ mb: 2, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
             <Typography variant="body2" fontWeight="bold">
               {opening.type} #{index + 1}
