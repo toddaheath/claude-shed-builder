@@ -217,6 +217,68 @@ describe('DesignPanel', () => {
     });
   });
 
+  describe('opening validation', () => {
+    it('shows error when opening exceeds wall width', () => {
+      const designWithWideOpening: Design = {
+        ...mockDesign,
+        widthFeet: 10,
+        widthInches: 0, // wall is 120 inches
+        openings: [
+          { type: 'Door', wall: 'Front', offsetInches: 60, widthInches: 72, heightInches: 80, sillHeightInches: 0 },
+        ],
+      };
+      render(<DesignPanel design={designWithWideOpening} onChange={vi.fn()} saveStatus="idle" />);
+      // offset(60) + width(72) = 132 > 120
+      expect(screen.getByText(/Exceeds wall/)).toBeInTheDocument();
+      expect(screen.getByText(/does not fit on the front wall/)).toBeInTheDocument();
+    });
+
+    it('shows error when opening exceeds wall height', () => {
+      const designWithTallOpening: Design = {
+        ...mockDesign,
+        heightFeet: 8,
+        heightInches: 0, // wall is 96 inches
+        openings: [
+          { type: 'Window', wall: 'Front', offsetInches: 12, widthInches: 36, heightInches: 60, sillHeightInches: 48 },
+        ],
+      };
+      render(<DesignPanel design={designWithTallOpening} onChange={vi.fn()} saveStatus="idle" />);
+      // sill(48) + height(60) = 108 > 96
+      expect(screen.getByText(/does not fit on the front wall/)).toBeInTheDocument();
+    });
+
+    it('does not show error when opening fits on wall', () => {
+      const designWithFittingOpening: Design = {
+        ...mockDesign,
+        widthFeet: 10,
+        widthInches: 0,
+        heightFeet: 8,
+        heightInches: 0,
+        openings: [
+          { type: 'Door', wall: 'Front', offsetInches: 24, widthInches: 36, heightInches: 80, sillHeightInches: 0 },
+        ],
+      };
+      render(<DesignPanel design={designWithFittingOpening} onChange={vi.fn()} saveStatus="idle" />);
+      // offset(24) + width(36) = 60 < 120, sill(0) + height(80) = 80 < 96
+      expect(screen.queryByText(/does not fit/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Exceeds wall/)).not.toBeInTheDocument();
+    });
+
+    it('uses depth for side walls', () => {
+      const designWithSideOpening: Design = {
+        ...mockDesign,
+        depthFeet: 8,
+        depthInches: 0, // left wall is 96 inches wide
+        openings: [
+          { type: 'Window', wall: 'Left', offsetInches: 60, widthInches: 48, heightInches: 36, sillHeightInches: 36 },
+        ],
+      };
+      render(<DesignPanel design={designWithSideOpening} onChange={vi.fn()} saveStatus="idle" />);
+      // offset(60) + width(48) = 108 > 96
+      expect(screen.getByText(/does not fit on the left wall/)).toBeInTheDocument();
+    });
+  });
+
   describe('remaining dimension inputs', () => {
     it('calls onChange when depth feet is changed', async () => {
       const onChange = vi.fn();
