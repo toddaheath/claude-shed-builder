@@ -98,8 +98,16 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
-      - name: Test
-        run: npm test
+      - name: Test with coverage
+        run: npx vitest run --coverage
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: frontend-coverage
+          path: src/shed-builder-ui/coverage/coverage.cobertura.xml
+          retention-days: 14
 
       - name: Build
         run: npm run build
