@@ -1,0 +1,31 @@
+# Git
+.git
+.github
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Node
+src/shed-builder-ui/node_modules
+src/shed-builder-ui/dist
+
+# .NET build output
+**/bin
+**/obj
+
+# Test results
+test-results
+**/TestResults
+
+# Docker
+docker-compose*.yml
+Dockerfile.*
+
+# Misc
+.claude
+*.md
+LICENSE
