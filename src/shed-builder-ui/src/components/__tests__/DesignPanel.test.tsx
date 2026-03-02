@@ -104,6 +104,33 @@ describe('DesignPanel', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ depthInches: expect.any(Number) }));
   });
 
+  it('calls onChange when roof pitch is changed', async () => {
+    const onChange = vi.fn();
+    render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+    const pitchInput = screen.getByRole('spinbutton', { name: /roof pitch/i });
+    await userEvent.clear(pitchInput);
+    await userEvent.type(pitchInput, '6');
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ roofPitch: expect.any(Number) }));
+  });
+
+  it('renders with LeanTo roof design', () => {
+    const leanToDesign = { ...mockDesign, roofType: 'LeanTo' as const };
+    render(<DesignPanel design={leanToDesign} onChange={vi.fn()} saveStatus="idle" />);
+    expect(screen.getByDisplayValue('Test Shed')).toBeInTheDocument();
+  });
+
+  it('calls onChange when height feet is changed', async () => {
+    const onChange = vi.fn();
+    render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+    const heightInput = screen.getByRole('spinbutton', { name: 'Wall height feet' });
+    await userEvent.type(heightInput, '0');
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ heightFeet: expect.any(Number) }));
+  });
+
   it('shows all save statuses correctly', () => {
     const statuses = ['idle', 'saving', 'saved', 'error'] as const;
     const labels = ['Ready', 'Saving...', 'Saved', 'Error saving'];
