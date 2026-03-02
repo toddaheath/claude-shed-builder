@@ -30,6 +30,18 @@ interface Props {
   onDuplicate?: (design: Design) => void;
 }
 
+function formatDesignSummary(d: Design): string {
+  const dims = `${d.widthFeet}'${d.widthInches ? d.widthInches + '"' : ''} × ${d.depthFeet}'${d.depthInches ? d.depthInches + '"' : ''}`;
+  const openings = d.openings ?? [];
+  if (openings.length === 0) return dims;
+  const doors = openings.filter((o) => o.type === 'Door').length;
+  const windows = openings.filter((o) => o.type === 'Window').length;
+  const parts: string[] = [];
+  if (doors > 0) parts.push(`${doors} door${doors > 1 ? 's' : ''}`);
+  if (windows > 0) parts.push(`${windows} window${windows > 1 ? 's' : ''}`);
+  return `${dims} · ${parts.join(', ')}`;
+}
+
 export default memo(function DesignList({ designs, selectedId, onSelect, onCreate, onDelete, onDuplicate }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -89,7 +101,7 @@ export default memo(function DesignList({ designs, selectedId, onSelect, onCreat
           >
             <ListItemText
               primary={d.name}
-              secondary={`${d.widthFeet}'${d.widthInches ? d.widthInches + '"' : ''} × ${d.depthFeet}'${d.depthInches ? d.depthInches + '"' : ''}`}
+              secondary={formatDesignSummary(d)}
             />
             <ListItemSecondaryAction>
               {onDuplicate && (
