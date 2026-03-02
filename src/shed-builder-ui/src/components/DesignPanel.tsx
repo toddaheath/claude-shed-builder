@@ -126,6 +126,17 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
         </Select>
       </FormControl>
 
+      <TextField
+        label="Roof Overhang (in)"
+        type="number"
+        size="small"
+        fullWidth
+        value={design.roofOverhangInches}
+        onChange={(e) => onChange({ roofOverhangInches: Number(e.target.value) })}
+        inputProps={{ min: 0, max: 36, step: 1 }}
+        sx={{ mb: 2 }}
+      />
+
       <Divider sx={{ my: 2 }} />
 
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>

@@ -358,6 +358,78 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
+    public async Task CreateAndGet_RoofOverhangInches_RoundTrip()
+    {
+        await CreateAuthenticatedUser("Overhang", $"overhang-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Overhang Shed",
+            WidthFeet = 10,
+            DepthFeet = 12,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            RoofOverhangInches = 18,
+        };
+
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+        Assert.Equal(18, design!.RoofOverhangInches);
+
+        var getResponse = await _client.GetAsync($"/api/v1/designs/{design.Id}");
+        var fetched = await ReadJson<DesignResponse>(getResponse.Content);
+        Assert.Equal(18, fetched!.RoofOverhangInches);
+    }
+
+    [Fact]
+    public async Task Update_RoofOverhangInches_ReturnsUpdated()
+    {
+        await CreateAuthenticatedUser("OhUpdate", $"ohupdate-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest { Name = "OH Update Test" };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+        Assert.Equal(12, design!.RoofOverhangInches); // default
+
+        var update = new UpdateDesignRequest { RoofOverhangInches = 6 };
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/designs/{design.Id}", update, JsonOptions);
+        var updated = await ReadJson<DesignResponse>(updateResponse.Content);
+        Assert.Equal(6, updated!.RoofOverhangInches);
+    }
+
+    [Fact]
+    public async Task VersionRestore_PreservesRoofOverhangInches()
+    {
+        await CreateAuthenticatedUser("OhVersion", $"ohversion-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest { Name = "OH Version Test", RoofOverhangInches = 24 };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+        var id = design!.Id;
+
+        // Save version with overhang=24
+        await _client.PostAsJsonAsync($"/api/v1/designs/{id}/versions",
+            new CreateVersionRequest { Label = "With Overhang" }, JsonOptions);
+
+        // Change overhang
+        await _client.PutAsJsonAsync($"/api/v1/designs/{id}",
+            new UpdateDesignRequest { RoofOverhangInches = 6 }, JsonOptions);
+
+        // Restore
+        var versions = await _client.GetAsync($"/api/v1/designs/{id}/versions");
+        var versionPage = await ReadJson<PaginatedResponse<VersionResponse>>(versions.Content);
+        Assert.Equal(24, versionPage!.Items[0].RoofOverhangInches);
+
+        var restoreResponse = await _client.PostAsync(
+            $"/api/v1/designs/{id}/versions/{versionPage.Items[0].Id}/restore", null);
+        var restored = await ReadJson<DesignResponse>(restoreResponse.Content);
+        Assert.Equal(24, restored!.RoofOverhangInches);
+    }
+
+    [Fact]
     public async Task GetNonExistentDesign_Returns404()
     {
         await CreateAuthenticatedUser("NotFound", $"notfound-{Guid.NewGuid()}@test.com");

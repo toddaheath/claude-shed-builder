@@ -45,6 +45,9 @@ public class Design
     [Column("roof_type")]
     public RoofType RoofType { get; set; }
 
+    [Column("roof_overhang_inches")]
+    public int RoofOverhangInches { get; set; } = 12;
+
     [Column("user_id")]
     public Guid UserId { get; set; }
 

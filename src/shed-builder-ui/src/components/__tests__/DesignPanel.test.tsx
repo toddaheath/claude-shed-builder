@@ -15,6 +15,7 @@ const mockDesign: Design = {
   heightInches: 0,
   roofPitch: 4,
   roofType: 'Gable',
+  roofOverhangInches: 12,
   openings: [],
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -113,6 +114,17 @@ describe('DesignPanel', () => {
     await userEvent.type(pitchInput, '6');
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ roofPitch: expect.any(Number) }));
+  });
+
+  it('calls onChange when roof overhang is changed', async () => {
+    const onChange = vi.fn();
+    render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+    const overhangInput = screen.getByRole('spinbutton', { name: /roof overhang/i });
+    await userEvent.clear(overhangInput);
+    await userEvent.type(overhangInput, '6');
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ roofOverhangInches: expect.any(Number) }));
   });
 
   it('renders with LeanTo roof design', () => {

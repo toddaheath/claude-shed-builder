@@ -225,31 +225,33 @@ function ShedGeometry({ design }: Props) {
 
       {/* Roof */}
       {design.roofType === 'Gable' ? (
-        <GableRoof w={w} d={d} h={h} pitch={pitch} />
+        <GableRoof w={w} d={d} h={h} pitch={pitch} oh={scale(design.roofOverhangInches ?? 12)} />
       ) : (
-        <LeanToRoof w={w} d={d} h={h} pitch={pitch} />
+        <LeanToRoof w={w} d={d} h={h} pitch={pitch} oh={scale(design.roofOverhangInches ?? 12)} />
       )}
     </group>
   );
 }
 
-function GableRoof({ w, d, h, pitch }: { w: number; d: number; h: number; pitch: number }) {
+function GableRoof({ w, d, h, pitch, oh }: { w: number; d: number; h: number; pitch: number; oh: number }) {
   const halfW = w / 2;
   const rise = (halfW * pitch) / 12;
-  const rafterLen = Math.sqrt(halfW * halfW + rise * rise);
+  const rafterSpan = halfW + oh;
+  const rafterRise = (rafterSpan * pitch) / 12;
+  const rafterLen = Math.sqrt(rafterSpan * rafterSpan + rafterRise * rafterRise);
   const angle = Math.atan2(rise, halfW);
 
   return (
     <group>
       {/* Left slope */}
-      <mesh position={[halfW / 2, h + rise / 2, d / 2]} rotation={[0, 0, angle]} castShadow>
-        <boxGeometry args={[rafterLen, 0.08, d + 0.2]} />
+      <mesh position={[(halfW - oh) / 2, h + rise / 2, d / 2]} rotation={[0, 0, angle]} castShadow>
+        <boxGeometry args={[rafterLen, 0.08, d + 2 * oh]} />
         <meshStandardMaterial color="#8B0000" />
       </mesh>
 
       {/* Right slope */}
-      <mesh position={[w - halfW / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]} castShadow>
-        <boxGeometry args={[rafterLen, 0.08, d + 0.2]} />
+      <mesh position={[w - (halfW - oh) / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]} castShadow>
+        <boxGeometry args={[rafterLen, 0.08, d + 2 * oh]} />
         <meshStandardMaterial color="#8B0000" />
       </mesh>
 
@@ -277,15 +279,16 @@ function GableTriangle({ w, rise }: { w: number; rise: number }) {
   return <shapeGeometry args={[shape]} />;
 }
 
-function LeanToRoof({ w, d, h, pitch }: { w: number; d: number; h: number; pitch: number }) {
+function LeanToRoof({ w, d, h, pitch, oh }: { w: number; d: number; h: number; pitch: number; oh: number }) {
   const rise = (w * pitch) / 12;
-  const rafterLen = Math.sqrt(w * w + rise * rise);
+  const rafterSpan = w + oh;
+  const rafterLen = Math.sqrt(rafterSpan * rafterSpan + ((rafterSpan * pitch) / 12) ** 2);
   const angle = Math.atan2(rise, w);
 
   return (
     <group>
       <mesh position={[w / 2, h + rise / 2, d / 2]} rotation={[0, 0, -angle]} castShadow>
-        <boxGeometry args={[rafterLen, 0.08, d + 0.2]} />
+        <boxGeometry args={[rafterLen, 0.08, d + 2 * oh]} />
         <meshStandardMaterial color="#8B0000" />
       </mesh>
 
