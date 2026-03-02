@@ -95,6 +95,62 @@ describe('DimensionInput', () => {
     expect(group).toHaveAttribute('aria-labelledby', 'width-label');
   });
 
+  it('shows error when feet is below minimum', () => {
+    render(
+      <DimensionInput
+        label="Width"
+        feet={2}
+        inches={0}
+        onFeetChange={vi.fn()}
+        onInchesChange={vi.fn()}
+        minFeet={4}
+      />
+    );
+    expect(screen.getByText('4–60')).toBeInTheDocument();
+  });
+
+  it('shows error when feet exceeds maximum', () => {
+    render(
+      <DimensionInput
+        label="Wall Height"
+        feet={25}
+        inches={0}
+        onFeetChange={vi.fn()}
+        onInchesChange={vi.fn()}
+        minFeet={6}
+        maxFeet={20}
+      />
+    );
+    expect(screen.getByText('6–20')).toBeInTheDocument();
+  });
+
+  it('shows error when inches exceeds 11', () => {
+    render(
+      <DimensionInput
+        label="Width"
+        feet={8}
+        inches={14}
+        onFeetChange={vi.fn()}
+        onInchesChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText('0–11')).toBeInTheDocument();
+  });
+
+  it('does not show error for valid values', () => {
+    render(
+      <DimensionInput
+        label="Width"
+        feet={8}
+        inches={6}
+        onFeetChange={vi.fn()}
+        onInchesChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByText('4–60')).not.toBeInTheDocument();
+    expect(screen.queryByText('0–11')).not.toBeInTheDocument();
+  });
+
   it('lowercases multi-word labels for aria-labels', () => {
     render(
       <DimensionInput

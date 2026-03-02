@@ -23,6 +23,9 @@ export default memo(function DimensionInput({
   const slug = label.toLowerCase().replace(/\s+/g, '-');
   const ariaPrefix = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
 
+  const feetError = feet < minFeet || feet > maxFeet;
+  const inchesError = inches < 0 || inches > 11;
+
   return (
     <>
       <Typography variant="subtitle2" gutterBottom id={`${slug}-label`}>{label}</Typography>
@@ -34,6 +37,8 @@ export default memo(function DimensionInput({
           value={feet}
           onChange={(e) => onFeetChange(Number(e.target.value))}
           inputProps={{ min: minFeet, max: maxFeet, 'aria-label': `${ariaPrefix} feet` }}
+          error={feetError}
+          helperText={feetError ? `${minFeet}–${maxFeet}` : undefined}
         />
         <TextField
           label="Inches"
@@ -42,6 +47,8 @@ export default memo(function DimensionInput({
           value={inches}
           onChange={(e) => onInchesChange(Number(e.target.value))}
           inputProps={{ min: 0, max: 11, 'aria-label': `${ariaPrefix} inches` }}
+          error={inchesError}
+          helperText={inchesError ? '0–11' : undefined}
         />
       </Stack>
     </>
