@@ -84,6 +84,26 @@ describe('DesignPanel', () => {
     });
   });
 
+  it('calls onChange with widthFeet when width feet input is modified', async () => {
+    const onChange = vi.fn();
+    render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+    const widthFeetInput = screen.getByRole('spinbutton', { name: 'Width feet' });
+    await userEvent.type(widthFeetInput, '2');
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ widthFeet: expect.any(Number) }));
+  });
+
+  it('calls onChange with depthInches when depth inches input is modified', async () => {
+    const onChange = vi.fn();
+    render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+    const depthInchesInput = screen.getByRole('spinbutton', { name: 'Depth inches' });
+    await userEvent.type(depthInchesInput, '6');
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ depthInches: expect.any(Number) }));
+  });
+
   it('shows all save statuses correctly', () => {
     const statuses = ['idle', 'saving', 'saved', 'error'] as const;
     const labels = ['Ready', 'Saving...', 'Saved', 'Error saving'];

@@ -157,4 +157,48 @@ describe('DesignList', () => {
 
     expect(onDelete).not.toHaveBeenCalled();
   });
+
+  it('opens create dialog and calls onCreate', async () => {
+    const onCreate = vi.fn();
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={onCreate}
+        onDelete={vi.fn()}
+      />
+    );
+
+    // Click the add button
+    await userEvent.click(screen.getByLabelText('Create new design'));
+
+    // Dialog should appear
+    expect(screen.getByText('New Design')).toBeInTheDocument();
+
+    // Type a name and click Create
+    const nameInput = screen.getByLabelText('Design Name');
+    await userEvent.type(nameInput, 'My New Shed');
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(onCreate).toHaveBeenCalledWith('My New Shed');
+  });
+
+  it('does not create with empty name', async () => {
+    const onCreate = vi.fn();
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={onCreate}
+        onDelete={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByLabelText('Create new design'));
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(onCreate).not.toHaveBeenCalled();
+  });
 });
