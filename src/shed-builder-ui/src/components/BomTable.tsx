@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import {
   Alert,
+  CircularProgress,
   Snackbar,
   Table,
   TableBody,
@@ -29,11 +30,17 @@ interface Props {
 
 export default memo(function BomTable({ designId, designName, bom, onLoadBom }: Props) {
   const [cost, setCost] = useState<CostResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setCost(null);
     onLoadBom(designId);
-    api.getCost(designId).then(setCost).catch(() => setCost(null));
+    api.getCost(designId)
+      .then(setCost)
+      .catch(() => setCost(null))
+      .finally(() => setLoading(false));
   }, [designId, onLoadBom]);
 
   const handleDownloadPdf = () => {
@@ -115,6 +122,12 @@ export default memo(function BomTable({ designId, designName, bom, onLoadBom }: 
           </Button>
         </Stack>
       </Box>
+
+      {loading && sourceItems.length === 0 && (
+        <Box display="flex" justifyContent="center" py={4}>
+          <CircularProgress size={32} aria-label="Loading bill of materials" />
+        </Box>
+      )}
 
       {Object.entries(grouped).map(([category, items]) => (
         <Box key={category} mb={2}>
