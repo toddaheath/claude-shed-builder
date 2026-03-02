@@ -526,4 +526,94 @@ public class DesignsControllerTests : IDisposable
         var result = await _controller.RestoreVersion(designId, versionId);
         Assert.IsType<NotFoundResult>(result.Result);
     }
+
+    [Fact]
+    public async Task GetCost_NonExistent_ReturnsNotFound()
+    {
+        var result = await _controller.GetCost(Guid.NewGuid());
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetPdf_NonExistent_ReturnsNotFound()
+    {
+        var result = await _controller.GetPdf(Guid.NewGuid());
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task Create_WithOpenings_ReturnsOpenings()
+    {
+        var request = new CreateDesignRequest
+        {
+            Name = "Shed With Openings",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 36, HeightInches = 80, OffsetInches = 12, SillHeightInches = 0 },
+                new() { Type = OpeningType.Window, Wall = WallSide.Right, WidthInches = 30, HeightInches = 24, OffsetInches = 24, SillHeightInches = 48 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var design = ((result.Result as CreatedAtActionResult)!.Value as DesignResponse)!;
+
+        Assert.Equal(2, design.Openings.Count);
+        Assert.Equal(OpeningType.Door, design.Openings[0].Type);
+        Assert.Equal(WallSide.Front, design.Openings[0].Wall);
+        Assert.Equal(OpeningType.Window, design.Openings[1].Type);
+    }
+
+    [Fact]
+    public async Task List_ClampsPageSizeToMax100()
+    {
+        for (int i = 0; i < 3; i++)
+            await _controller.Create(new CreateDesignRequest { Name = $"Shed {i}" });
+
+        var result = await _controller.List(page: 1, pageSize: 200);
+        var paginated = result.Value!;
+        Assert.Equal(100, paginated.PageSize);
+    }
+
+    [Fact]
+    public async Task List_ClampsPageMinTo1()
+    {
+        await _controller.Create(new CreateDesignRequest { Name = "Shed" });
+
+        var result = await _controller.List(page: -1, pageSize: 10);
+        var paginated = result.Value!;
+        Assert.Equal(1, paginated.Page);
+        Assert.Single(paginated.Items);
+    }
+
+    [Fact]
+    public async Task CreateVersion_NonExistentDesign_ReturnsNotFound()
+    {
+        var result = await _controller.CreateVersion(Guid.NewGuid(), new CreateVersionRequest { Label = "v1" });
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetVersion_NonExistentDesign_ReturnsNotFound()
+    {
+        var result = await _controller.GetVersion(Guid.NewGuid(), Guid.NewGuid());
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetStl_IncludesDesignNameInFilename()
+    {
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        _stlMock.Setup(s => s.Export(It.IsAny<Design>())).Returns(new byte[] { 1, 2, 3 });
+
+        var result = await _controller.GetStl(id);
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("My Shed.stl", fileResult.FileDownloadName);
+    }
 }
