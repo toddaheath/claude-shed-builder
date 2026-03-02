@@ -465,6 +465,45 @@ public class DesignsControllerTests : IDisposable
     }
 
     [Fact]
+    public async Task GetCost_ReturnsCalculatedCost()
+    {
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        var bomItems = new List<BomItem>
+        {
+            new() { Material = "Framing lumber", Dimensions = "2×4 × 8'", Quantity = 20, Unit = "pieces", Category = "Walls" },
+            new() { Material = "OSB sheathing", Dimensions = "4×8", Quantity = 8, Unit = "sheets", Category = "Walls" },
+        };
+        _bomMock.Setup(b => b.Calculate(It.IsAny<Design>())).Returns(new BomResponse { DesignId = id, Items = bomItems });
+        _priceMock.Setup(p => p.GetUnitPrice("Framing lumber", It.IsAny<string>())).Returns(5.50m);
+        _priceMock.Setup(p => p.GetUnitPrice("OSB sheathing", It.IsAny<string>())).Returns(28.00m);
+
+        var result = await _controller.GetCost(id);
+        Assert.Equal(id, result.Value!.DesignId);
+        Assert.Equal(2, result.Value!.Items.Count);
+        Assert.Equal(5.50m, result.Value!.Items[0].UnitPrice);
+        Assert.Equal(110.00m, result.Value!.Items[0].TotalPrice);
+        Assert.Equal(334.00m, result.Value!.GrandTotal); // 110 + 224
+    }
+
+    [Fact]
+    public async Task GetPdf_ReturnsFile()
+    {
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        _bomMock.Setup(b => b.Calculate(It.IsAny<Design>())).Returns(new BomResponse { DesignId = id, Items = new List<BomItem>() });
+        _pdfMock.Setup(p => p.Export(It.IsAny<Design>(), It.IsAny<CostResponse>())).Returns(new byte[] { 0x25, 0x50, 0x44, 0x46 });
+
+        var result = await _controller.GetPdf(id);
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/pdf", fileResult.ContentType);
+        Assert.Equal(4, fileResult.FileContents.Length);
+        Assert.Equal("My Shed.pdf", fileResult.FileDownloadName);
+    }
+
+    [Fact]
     public async Task GetPdf_OtherUsersDesign_ReturnsNotFound()
     {
         var (designId, _) = await CreateDesignWithVersionAsDifferentUser();
