@@ -49,7 +49,11 @@ helm template deploy/helm/shed-builder
   - Uses React Three Fiber for 3D shed visualization (doors, windows, shadows)
   - MUI for UI components
   - Vite for bundling (proxies /api to localhost:5000 in dev)
-  - Components: ShedViewer3D, DesignPanel, DesignList (with search), BomTable, VersionPanel
+  - Components: ShedViewer3D, DesignPanel, DesignList (with search + duplicate), BomTable, VersionPanel, DimensionInput, ErrorBoundary
+  - DimensionInput: Reusable feet/inches input pair with inline validation (used by DesignPanel)
+  - DesignList shows opening counts in summary (e.g., "8' × 10' · 1 door, 2 windows")
+  - Change password dialog accessible from toolbar (uses api.changePassword)
+  - Design duplication via copy button in DesignList sidebar
 - **tests/ShedBuilder.Api.Tests/**: xUnit tests (unit + integration)
   - Uses InMemory database for integration tests
 - **deploy/helm/shed-builder/**: Helm 3 chart for Kubernetes deployment
@@ -66,3 +70,5 @@ helm template deploy/helm/shed-builder
 - Auth endpoints: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/change-password` (requires `[Authorize]`)
 - Password requirements: min 12 characters, must include a digit and a special character
 - Error responses use ProblemDetails format (read `detail` field on the frontend)
+- Opening validation: zero dimensions rejected, wall width/height bounds checked, overlap detection on same wall
+- ValidateOpenings uses wall width (front/back → widthInches, left/right → depthInches)
