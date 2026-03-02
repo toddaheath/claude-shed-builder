@@ -93,4 +93,68 @@ public class PdfExporterTests
         Assert.NotNull(pdf);
         Assert.True(pdf.Length > 100);
     }
+
+    [Fact]
+    public void Export_SpecialCharactersInName_GeneratesValidPdf()
+    {
+        var exporter = new PdfExporter();
+        var design = CreateTestDesign();
+        design.Name = "Mike's \"Best\" Shed — 10' × 12'";
+        var costResponse = CreateTestCost(design.Id);
+
+        var pdf = exporter.Export(design, costResponse);
+        Assert.NotNull(pdf);
+        Assert.True(pdf.Length > 100);
+        Assert.Equal((byte)'%', pdf[0]);
+    }
+
+    [Fact]
+    public void Export_ManyCostItems_GeneratesValidPdf()
+    {
+        var exporter = new PdfExporter();
+        var design = CreateTestDesign();
+        var items = Enumerable.Range(1, 25).Select(i => new CostBomItem
+        {
+            Material = $"Material {i}",
+            Dimensions = $"{i}×{i}",
+            Quantity = i,
+            Unit = "pieces",
+            Category = i % 2 == 0 ? "Walls" : "Floor",
+            UnitPrice = i * 1.5m,
+            TotalPrice = i * i * 1.5m,
+        }).ToList();
+
+        var costResponse = new CostResponse
+        {
+            DesignId = design.Id,
+            Items = items,
+            GrandTotal = items.Sum(x => x.TotalPrice),
+        };
+
+        var pdf = exporter.Export(design, costResponse);
+        Assert.NotNull(pdf);
+        Assert.True(pdf.Length > 100);
+    }
+
+    [Fact]
+    public void Export_DesignWithMultipleOpenings_GeneratesValidPdf()
+    {
+        var exporter = new PdfExporter();
+        var design = CreateTestDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window, Wall = WallSide.Right,
+            WidthInches = 36, HeightInches = 24, OffsetInches = 24, SillHeightInches = 48
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window, Wall = WallSide.Left,
+            WidthInches = 30, HeightInches = 30, OffsetInches = 12, SillHeightInches = 36
+        });
+        var costResponse = CreateTestCost(design.Id);
+
+        var pdf = exporter.Export(design, costResponse);
+        Assert.NotNull(pdf);
+        Assert.True(pdf.Length > 100);
+    }
 }
