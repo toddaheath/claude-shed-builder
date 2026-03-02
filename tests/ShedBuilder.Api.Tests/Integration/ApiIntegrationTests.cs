@@ -619,4 +619,63 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
         var response = await _client.PutAsJsonAsync($"/api/v1/designs/{design!.Id}", update, JsonOptions);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Register_NameTooLong_Returns400()
+    {
+        var longName = new string('A', 201);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = longName, email = $"long-{Guid.NewGuid()}@test.com", password = "Password123!" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_MaxLengthName_Returns201()
+    {
+        var maxName = new string('A', 200);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = maxName, email = $"max-{Guid.NewGuid()}@test.com", password = "Password123!" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task HealthLive_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/health/live");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task HealthReady_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/health/ready");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetDesigns_WithSearch_FiltersResults()
+    {
+        var (_, client) = await CreateAuthenticatedUser($"Search-{Guid.NewGuid()}", $"search-{Guid.NewGuid()}@test.com");
+
+        await client.PostAsJsonAsync("/api/v1/designs", new { name = "Garden Shed" }, JsonOptions);
+        await client.PostAsJsonAsync("/api/v1/designs", new { name = "Workshop" }, JsonOptions);
+        await client.PostAsJsonAsync("/api/v1/designs", new { name = "Garden Office" }, JsonOptions);
+
+        var response = await client.GetAsync("/api/v1/designs?search=garden");
+        var result = await ReadJson<PaginatedResponse<DesignResponse>>(response.Content);
+
+        Assert.Equal(2, result!.TotalCount);
+        Assert.All(result.Items, d => Assert.Contains("Garden", d.Name));
+    }
+
+    [Fact]
+    public async Task GetDesign_NotFound_Returns404()
+    {
+        var (_, client) = await CreateAuthenticatedUser($"NotFound-{Guid.NewGuid()}", $"nf-{Guid.NewGuid()}@test.com");
+
+        var response = await client.GetAsync($"/api/v1/designs/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
