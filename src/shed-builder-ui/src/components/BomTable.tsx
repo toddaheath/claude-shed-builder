@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import TableChartIcon from '@mui/icons-material/TableChart';
 import type { BomItem, BomResponse, CostBomItem, CostResponse } from '../types';
 import { api } from '../services/api';
 
@@ -41,6 +42,35 @@ export default memo(function BomTable({ designId, designName, bom, onLoadBom }: 
 
   const handleDownloadStl = () => {
     api.downloadStl(designId, designName).catch(() => setDownloadError('Failed to download STL.'));
+  };
+
+  const handleExportCsv = () => {
+    const items: (BomItem | CostBomItem)[] = cost?.items ?? bom?.items ?? [];
+    if (items.length === 0) return;
+    const withCost = cost !== null;
+    const headers = ['Category', 'Material', 'Dimensions', 'Qty', 'Unit'];
+    if (withCost) headers.push('Unit $', 'Total $');
+    const rows = items.map((item) => {
+      const row = [item.category, item.material, item.dimensions, String(item.quantity), item.unit];
+      if (withCost && 'unitPrice' in item) {
+        const ci = item as CostBomItem;
+        row.push(ci.unitPrice.toFixed(2), ci.totalPrice.toFixed(2));
+      }
+      return row;
+    });
+    if (withCost && cost) {
+      rows.push([]);
+      rows.push(['', '', '', '', '', 'Grand Total', `$${cost.grandTotal.toFixed(2)}`]);
+    }
+    const escape = (v: string) => (v.includes(',') || v.includes('"') || v.includes('\n')) ? `"${v.replace(/"/g, '""')}"` : v;
+    const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(v => escape(String(v))).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${designName}-bom.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const hasCost = cost !== null;
@@ -72,6 +102,16 @@ export default memo(function BomTable({ designId, designName, bom, onLoadBom }: 
             aria-label="Download STL model"
           >
             STL
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<TableChartIcon />}
+            onClick={handleExportCsv}
+            size="small"
+            aria-label="Export CSV"
+            disabled={sourceItems.length === 0}
+          >
+            CSV
           </Button>
         </Stack>
       </Box>

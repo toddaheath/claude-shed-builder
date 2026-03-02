@@ -184,4 +184,94 @@ describe('BomTable', () => {
     });
     expect(screen.getByText('Floor')).toBeInTheDocument();
   });
+
+  it('shows CSV export button', () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    expect(screen.getByRole('button', { name: /Export CSV/i })).toBeInTheDocument();
+  });
+
+  it('disables CSV button when no items', () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={null} onLoadBom={vi.fn()} />
+    );
+
+    expect(screen.getByRole('button', { name: /Export CSV/i })).toBeDisabled();
+  });
+
+  it('creates CSV download when clicked', async () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+    const clickMock = vi.fn();
+    const origCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const mockAnchor = { href: '', download: '', click: clickMock } as unknown as HTMLAnchorElement;
+    createElementSpy.mockImplementation((tag: string) => {
+      if (tag === 'a') return mockAnchor;
+      return origCreateElement(tag);
+    });
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
+
+    expect(clickMock).toHaveBeenCalled();
+    expect(mockAnchor.download).toBe('Test Shed-bom.csv');
+    expect(createObjectURLSpy).toHaveBeenCalled();
+    expect(revokeObjectURLSpy).toHaveBeenCalled();
+
+    createElementSpy.mockRestore();
+    createObjectURLSpy.mockRestore();
+    revokeObjectURLSpy.mockRestore();
+  });
+
+  it('includes cost columns in CSV when cost data is available', async () => {
+    mockedApi.getCost.mockResolvedValue(costData);
+    let capturedBlob: Blob | null = null;
+    const clickMock = vi.fn();
+    const origCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob: Blob) => {
+      capturedBlob = blob;
+      return 'blob:test';
+    });
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const mockAnchor = { href: '', download: '', click: clickMock } as unknown as HTMLAnchorElement;
+    createElementSpy.mockImplementation((tag: string) => {
+      if (tag === 'a') return mockAnchor;
+      return origCreateElement(tag);
+    });
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    // Wait for cost data to load
+    await waitFor(() => {
+      expect(screen.getByText('Unit $')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
+
+    expect(capturedBlob).not.toBeNull();
+    const text = await capturedBlob!.text();
+    expect(text).toContain('Unit $');
+    expect(text).toContain('Total $');
+    expect(text).toContain('Grand Total');
+
+    createElementSpy.mockRestore();
+    createObjectURLSpy.mockRestore();
+    revokeObjectURLSpy.mockRestore();
+  });
 });
