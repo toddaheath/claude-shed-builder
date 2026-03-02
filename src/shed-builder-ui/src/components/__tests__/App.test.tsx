@@ -371,6 +371,65 @@ describe('App', () => {
     unmount();
   });
 
+  it('shows export buttons when a design is active', async () => {
+    const { getStoredToken, api: mockApi } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const newDesign = {
+      id: 'new-id',
+      name: 'Export Test',
+      widthFeet: 10,
+      widthInches: 0,
+      depthFeet: 12,
+      depthInches: 0,
+      heightFeet: 8,
+      heightInches: 0,
+      roofPitch: 4,
+      roofType: 'Gable' as const,
+      openings: [],
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    };
+    vi.mocked(mockApi.createDesign).mockResolvedValue(newDesign);
+    vi.mocked(mockApi.listDesigns)
+      .mockResolvedValueOnce({ items: [], totalCount: 0 })
+      .mockResolvedValue({ items: [newDesign], totalCount: 1 });
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select or create a design to begin')).toBeInTheDocument();
+    });
+
+    // Create a design to make export buttons appear
+    await userEvent.click(screen.getByLabelText('Create new design'));
+    await userEvent.type(screen.getByLabelText('Design Name'), 'Export Test');
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Download PDF')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Download STL')).toBeInTheDocument();
+
+    unmount();
+  });
+
+  it('does not show export buttons when no design is selected', async () => {
+    const { getStoredToken } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select or create a design to begin')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText('Download PDF')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Download STL')).not.toBeInTheDocument();
+
+    unmount();
+  });
+
   it('shows tabs when a design is selected', async () => {
     const { getStoredToken, api: mockApi } = await getApi();
     vi.mocked(getStoredToken).mockReturnValue('valid-token');

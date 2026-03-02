@@ -26,6 +26,8 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LockIcon from '@mui/icons-material/Lock';
+import DownloadIcon from '@mui/icons-material/Download';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CircularProgress from '@mui/material/CircularProgress';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -471,6 +473,25 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
                     <RedoIcon />
                   </IconButton>
                 </span>
+              </Tooltip>
+              <Box sx={{ mx: 0.5, height: 24, borderLeft: '1px solid', borderColor: 'rgba(255,255,255,0.3)' }} />
+              <Tooltip title="Download PDF report">
+                <IconButton
+                  color="inherit"
+                  aria-label="Download PDF"
+                  onClick={() => api.downloadPdf(activeDesign.id, activeDesign.name)}
+                >
+                  <PictureAsPdfIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Download STL model">
+                <IconButton
+                  color="inherit"
+                  aria-label="Download STL"
+                  onClick={() => api.downloadStl(activeDesign.id, activeDesign.name)}
+                >
+                  <DownloadIcon />
+                </IconButton>
               </Tooltip>
             </>
           )}
