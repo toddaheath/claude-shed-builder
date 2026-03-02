@@ -143,4 +143,109 @@ describe('DesignPanel', () => {
       unmount();
     });
   });
+
+  describe('opening field changes', () => {
+    const designWithOpening: Design = {
+      ...mockDesign,
+      openings: [
+        { type: 'Door', wall: 'Front', offsetInches: 24, widthInches: 36, heightInches: 80, sillHeightInches: 0 },
+      ],
+    };
+
+    it('calls onChange when opening width is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={designWithOpening} onChange={onChange} saveStatus="idle" />);
+
+      const widthInput = screen.getByRole('spinbutton', { name: 'Width (in)' });
+      await userEvent.type(widthInput, '4');
+
+      expect(onChange).toHaveBeenCalledWith({
+        openings: [expect.objectContaining({ widthInches: expect.any(Number) })],
+      });
+    });
+
+    it('calls onChange when opening height is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={designWithOpening} onChange={onChange} saveStatus="idle" />);
+
+      const heightInput = screen.getByRole('spinbutton', { name: 'Height (in)' });
+      await userEvent.type(heightInput, '2');
+
+      expect(onChange).toHaveBeenCalledWith({
+        openings: [expect.objectContaining({ heightInches: expect.any(Number) })],
+      });
+    });
+
+    it('calls onChange when opening offset is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={designWithOpening} onChange={onChange} saveStatus="idle" />);
+
+      const offsetInput = screen.getByRole('spinbutton', { name: 'Offset (in)' });
+      await userEvent.type(offsetInput, '6');
+
+      expect(onChange).toHaveBeenCalledWith({
+        openings: [expect.objectContaining({ offsetInches: expect.any(Number) })],
+      });
+    });
+
+    it('calls onChange when opening sill height is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={designWithOpening} onChange={onChange} saveStatus="idle" />);
+
+      const sillInput = screen.getByRole('spinbutton', { name: 'Sill (in)' });
+      await userEvent.type(sillInput, '4');
+
+      expect(onChange).toHaveBeenCalledWith({
+        openings: [expect.objectContaining({ sillHeightInches: expect.any(Number) })],
+      });
+    });
+
+    it('renders multiple openings with correct labels', () => {
+      const multiDesign: Design = {
+        ...mockDesign,
+        openings: [
+          { type: 'Door', wall: 'Front', offsetInches: 24, widthInches: 36, heightInches: 80, sillHeightInches: 0 },
+          { type: 'Window', wall: 'Left', offsetInches: 12, widthInches: 36, heightInches: 36, sillHeightInches: 36 },
+        ],
+      };
+      render(<DesignPanel design={multiDesign} onChange={vi.fn()} saveStatus="idle" />);
+
+      expect(screen.getByText('Door #1')).toBeInTheDocument();
+      expect(screen.getByText('Window #2')).toBeInTheDocument();
+      expect(screen.getByLabelText('Remove Door #1')).toBeInTheDocument();
+      expect(screen.getByLabelText('Remove Window #2')).toBeInTheDocument();
+    });
+  });
+
+  describe('remaining dimension inputs', () => {
+    it('calls onChange when depth feet is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+      const depthFeetInput = screen.getByRole('spinbutton', { name: 'Depth feet' });
+      await userEvent.type(depthFeetInput, '4');
+
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ depthFeet: expect.any(Number) }));
+    });
+
+    it('calls onChange when width inches is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+      const widthInchesInput = screen.getByRole('spinbutton', { name: 'Width inches' });
+      await userEvent.type(widthInchesInput, '6');
+
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ widthInches: expect.any(Number) }));
+    });
+
+    it('calls onChange when height inches is changed', async () => {
+      const onChange = vi.fn();
+      render(<DesignPanel design={mockDesign} onChange={onChange} saveStatus="idle" />);
+
+      const heightInchesInput = screen.getByRole('spinbutton', { name: 'Wall height inches' });
+      await userEvent.type(heightInchesInput, '6');
+
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ heightInches: expect.any(Number) }));
+    });
+  });
 });
