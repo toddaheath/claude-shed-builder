@@ -616,4 +616,189 @@ public class DesignsControllerTests : IDisposable
         var fileResult = Assert.IsType<FileContentResult>(result);
         Assert.Equal("My Shed.stl", fileResult.FileDownloadName);
     }
+
+    [Fact]
+    public async Task Create_RejectsOpeningWithZeroWidth()
+    {
+        var request = new CreateDesignRequest
+        {
+            Name = "Bad Shed",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 0, HeightInches = 80, OffsetInches = 0, SillHeightInches = 0 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Contains("width and height must be greater than zero", problem.Detail!);
+    }
+
+    [Fact]
+    public async Task Create_RejectsOpeningWithZeroHeight()
+    {
+        var request = new CreateDesignRequest
+        {
+            Name = "Bad Shed",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Window, Wall = WallSide.Right, WidthInches = 30, HeightInches = 0, OffsetInches = 0, SillHeightInches = 48 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Contains("width and height must be greater than zero", problem.Detail!);
+    }
+
+    [Fact]
+    public async Task Create_RejectsOpeningExceedingWallWidth()
+    {
+        // 8' wide shed = 96 inches. Door at offset 60 with width 48 = 108 > 96
+        var request = new CreateDesignRequest
+        {
+            Name = "Too Wide",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 48, HeightInches = 80, OffsetInches = 60, SillHeightInches = 0 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Contains("exceeds wall width", problem.Detail!);
+    }
+
+    [Fact]
+    public async Task Create_RejectsOpeningExceedingWallHeight()
+    {
+        // 8' tall shed = 96 inches. Window at sill 60 with height 48 = 108 > 96
+        var request = new CreateDesignRequest
+        {
+            Name = "Too Tall",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Window, Wall = WallSide.Front, WidthInches = 30, HeightInches = 48, OffsetInches = 0, SillHeightInches = 60 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Contains("exceeds wall height", problem.Detail!);
+    }
+
+    [Fact]
+    public async Task Create_RejectsOverlappingOpeningsOnSameWall()
+    {
+        // Two doors on front wall that overlap: [0,36] and [24,60]
+        var request = new CreateDesignRequest
+        {
+            Name = "Overlapping",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 36, HeightInches = 80, OffsetInches = 0, SillHeightInches = 0 },
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 36, HeightInches = 80, OffsetInches = 24, SillHeightInches = 0 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Contains("Overlapping openings", problem.Detail!);
+    }
+
+    [Fact]
+    public async Task Create_AllowsNonOverlappingOpeningsOnSameWall()
+    {
+        // Two doors on front wall that don't overlap: [0,36] and [40,76]
+        var request = new CreateDesignRequest
+        {
+            Name = "Side by Side",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 36, HeightInches = 80, OffsetInches = 0, SillHeightInches = 0 },
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 36, HeightInches = 80, OffsetInches = 40, SillHeightInches = 0 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var design = Assert.IsType<DesignResponse>(created.Value);
+        Assert.Equal(2, design.Openings.Count);
+    }
+
+    [Fact]
+    public async Task Update_RejectsOpeningExceedingWallWidth()
+    {
+        var createResult = await _controller.Create(DefaultCreateRequest());
+        var id = ((createResult.Result as CreatedAtActionResult)!.Value as DesignResponse)!.Id;
+
+        var updateResult = await _controller.Update(id, new UpdateDesignRequest
+        {
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, WidthInches = 48, HeightInches = 80, OffsetInches = 60, SillHeightInches = 0 },
+            },
+        });
+
+        Assert.IsType<BadRequestObjectResult>(updateResult.Result);
+    }
+
+    [Fact]
+    public async Task Create_RejectsOpeningExceedingSideWallWidth()
+    {
+        // Side wall uses depthFeet: 10' = 120 inches. Opening offset 100 + width 30 = 130 > 120
+        var request = new CreateDesignRequest
+        {
+            Name = "Side Too Wide",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            RoofType = RoofType.Gable,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Window, Wall = WallSide.Right, WidthInches = 30, HeightInches = 24, OffsetInches = 100, SillHeightInches = 48 },
+            },
+        };
+
+        var result = await _controller.Create(request);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Contains("exceeds wall width on Right wall", problem.Detail!);
+    }
 }
