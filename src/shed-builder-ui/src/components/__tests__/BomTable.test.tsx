@@ -172,6 +172,29 @@ describe('BomTable', () => {
     expect(screen.queryByText('Floor')).not.toBeInTheDocument();
   });
 
+  it('shows loading spinner while cost is being fetched', () => {
+    // Use a promise that never resolves to keep loading state
+    mockedApi.getCost.mockReturnValue(new Promise(() => {}));
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={null} onLoadBom={vi.fn()} />
+    );
+
+    expect(screen.getByLabelText('Loading bill of materials')).toBeInTheDocument();
+  });
+
+  it('hides loading spinner after cost loads', async () => {
+    mockedApi.getCost.mockResolvedValue(costData);
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Loading bill of materials')).not.toBeInTheDocument();
+    });
+  });
+
   it('groups items by category', async () => {
     mockedApi.getCost.mockRejectedValue(new Error('fail'));
 
