@@ -204,4 +204,131 @@ describe('App', () => {
       expect(screen.getByText(/too many requests/i)).toBeInTheDocument();
     });
   });
+
+  it('toggles dark mode when authenticated', async () => {
+    const { getStoredToken } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Toggle dark mode')).toBeInTheDocument();
+    });
+
+    // Click the dark mode toggle
+    await userEvent.click(screen.getByLabelText('Toggle dark mode'));
+
+    // The button should still be present after toggle
+    expect(screen.getByLabelText('Toggle dark mode')).toBeInTheDocument();
+
+    unmount();
+  });
+
+  it('shows empty state when no design is selected', async () => {
+    const { getStoredToken } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select or create a design to begin')).toBeInTheDocument();
+    });
+
+    // Should not show undo/redo when no design is selected
+    expect(screen.queryByLabelText('Undo')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Redo')).not.toBeInTheDocument();
+
+    unmount();
+  });
+
+  it('shows 3D viewer after creating a design', async () => {
+    const { getStoredToken, api: mockApi } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const newDesign = {
+      id: 'new-id',
+      name: 'New Shed',
+      widthFeet: 10,
+      widthInches: 0,
+      depthFeet: 12,
+      depthInches: 0,
+      heightFeet: 8,
+      heightInches: 0,
+      roofPitch: 4,
+      roofType: 'Gable' as const,
+      openings: [],
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    };
+    vi.mocked(mockApi.createDesign).mockResolvedValue(newDesign);
+    vi.mocked(mockApi.listDesigns)
+      .mockResolvedValueOnce({ items: [], totalCount: 0 })
+      .mockResolvedValue({ items: [newDesign], totalCount: 1 });
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select or create a design to begin')).toBeInTheDocument();
+    });
+
+    // Open create dialog
+    await userEvent.click(screen.getByLabelText('Create new design'));
+
+    // Fill in the name and submit
+    const nameInput = screen.getByLabelText('Design Name');
+    await userEvent.type(nameInput, 'New Shed');
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('shed-viewer')).toBeInTheDocument();
+    });
+
+    // Undo/Redo should now be visible (design is active)
+    expect(screen.getByLabelText('Undo')).toBeInTheDocument();
+    expect(screen.getByLabelText('Redo')).toBeInTheDocument();
+
+    unmount();
+  });
+
+  it('shows tabs when a design is selected', async () => {
+    const { getStoredToken, api: mockApi } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const design = {
+      id: 'd1',
+      name: 'Test Shed',
+      widthFeet: 10,
+      widthInches: 0,
+      depthFeet: 12,
+      depthInches: 0,
+      heightFeet: 8,
+      heightInches: 0,
+      roofPitch: 4,
+      roofType: 'Gable' as const,
+      openings: [],
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    };
+    vi.mocked(mockApi.createDesign).mockResolvedValue(design);
+    vi.mocked(mockApi.listDesigns)
+      .mockResolvedValueOnce({ items: [], totalCount: 0 })
+      .mockResolvedValue({ items: [design], totalCount: 1 });
+
+    const { unmount } = render(<App />);
+
+    // Open create dialog and create a design to get tabs to show
+    await userEvent.click(screen.getByLabelText('Create new design'));
+    const nameInput = screen.getByLabelText('Design Name');
+    await userEvent.type(nameInput, 'Test Shed');
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Design' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('tab', { name: 'BOM' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Versions' })).toBeInTheDocument();
+
+    unmount();
+  });
 });
