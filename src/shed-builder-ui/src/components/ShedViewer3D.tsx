@@ -150,14 +150,14 @@ function WallWithOpenings({
       </mesh>
 
       {/* Openings */}
-      {openings.map((opening, i) => {
+      {openings.map((opening) => {
         const ow = scale(opening.widthInches);
         const oh = scale(opening.heightInches);
         const ox = scale(opening.offsetInches + opening.widthInches / 2) - w / 2;
         const oy = scale(opening.sillHeightInches + opening.heightInches / 2) - h / 2;
 
         return (
-          <group key={i} position={[ox, oy, wallThickness / 2]}>
+          <group key={`${opening.wall}-${opening.type}-${opening.offsetInches}`} position={[ox, oy, wallThickness / 2]}>
             {opening.type === 'Door'
               ? <DoorOpening ow={ow} oh={oh} />
               : <WindowOpening ow={ow} oh={oh} />}

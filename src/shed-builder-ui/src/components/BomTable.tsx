@@ -95,7 +95,7 @@ export default memo(function BomTable({ designId, designName, bom, onLoadBom }: 
               </TableHead>
               <TableBody>
                 {items.map((item, i) => (
-                  <TableRow key={i}>
+                  <TableRow key={`${item.material}-${item.dimensions}-${i}`}>
                     <TableCell>{item.material}</TableCell>
                     <TableCell>{item.dimensions}</TableCell>
                     <TableCell align="right">{item.quantity}</TableCell>
