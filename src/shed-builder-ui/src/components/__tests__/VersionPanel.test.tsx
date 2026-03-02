@@ -119,6 +119,72 @@ describe('VersionPanel', () => {
     expect(onRestoreVersion).toHaveBeenCalledWith('d1', 'v1');
   });
 
+  it('does not save with empty label', async () => {
+    const onSaveVersion = vi.fn();
+    render(
+      <VersionPanel
+        designId="d1"
+        versions={mockVersions}
+        onLoadVersions={vi.fn()}
+        onSaveVersion={onSaveVersion}
+        onRestoreVersion={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByText('Save Version'));
+    // Click Save without typing a label
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSaveVersion).not.toHaveBeenCalled();
+  });
+
+  it('cancels save dialog without calling onSaveVersion', async () => {
+    const onSaveVersion = vi.fn();
+    render(
+      <VersionPanel
+        designId="d1"
+        versions={mockVersions}
+        onLoadVersions={vi.fn()}
+        onSaveVersion={onSaveVersion}
+        onRestoreVersion={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByText('Save Version'));
+    await userEvent.type(screen.getByLabelText('Version Label'), 'Some label');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onSaveVersion).not.toHaveBeenCalled();
+  });
+
+  it('reloads versions when designId changes', () => {
+    const onLoadVersions = vi.fn();
+    const { rerender } = render(
+      <VersionPanel
+        designId="d1"
+        versions={mockVersions}
+        onLoadVersions={onLoadVersions}
+        onSaveVersion={vi.fn()}
+        onRestoreVersion={vi.fn()}
+      />
+    );
+
+    expect(onLoadVersions).toHaveBeenCalledWith('d1');
+
+    rerender(
+      <VersionPanel
+        designId="d2"
+        versions={[]}
+        onLoadVersions={onLoadVersions}
+        onSaveVersion={vi.fn()}
+        onRestoreVersion={vi.fn()}
+      />
+    );
+
+    expect(onLoadVersions).toHaveBeenCalledWith('d2');
+    expect(onLoadVersions).toHaveBeenCalledTimes(2);
+  });
+
   it('cancels restore dialog without calling onRestoreVersion', async () => {
     const onRestoreVersion = vi.fn();
     render(
