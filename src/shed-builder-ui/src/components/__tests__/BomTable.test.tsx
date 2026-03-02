@@ -119,6 +119,59 @@ describe('BomTable', () => {
     });
   });
 
+  it('calls downloadPdf on successful PDF download', async () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+    mockedApi.downloadPdf.mockResolvedValue(undefined);
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Download PDF/i }));
+    expect(mockedApi.downloadPdf).toHaveBeenCalledWith('d1', 'Test Shed');
+  });
+
+  it('calls downloadStl on successful STL download', async () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+    mockedApi.downloadStl.mockResolvedValue(undefined);
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={bomData} onLoadBom={vi.fn()} />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Download STL/i }));
+    expect(mockedApi.downloadStl).toHaveBeenCalledWith('d1', 'Test Shed');
+  });
+
+  it('reloads BOM when designId changes', () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+    const onLoadBom = vi.fn();
+
+    const { rerender } = render(
+      <BomTable designId="d1" designName="Shed A" bom={bomData} onLoadBom={onLoadBom} />
+    );
+    expect(onLoadBom).toHaveBeenCalledWith('d1');
+
+    rerender(
+      <BomTable designId="d2" designName="Shed B" bom={bomData} onLoadBom={onLoadBom} />
+    );
+    expect(onLoadBom).toHaveBeenCalledWith('d2');
+    expect(onLoadBom).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders empty state when bom is null', async () => {
+    mockedApi.getCost.mockRejectedValue(new Error('fail'));
+
+    render(
+      <BomTable designId="d1" designName="Test Shed" bom={null} onLoadBom={vi.fn()} />
+    );
+
+    expect(screen.getByText('Bill of Materials')).toBeInTheDocument();
+    // No category sections should appear
+    expect(screen.queryByText('Walls')).not.toBeInTheDocument();
+    expect(screen.queryByText('Floor')).not.toBeInTheDocument();
+  });
+
   it('groups items by category', async () => {
     mockedApi.getCost.mockRejectedValue(new Error('fail'));
 
