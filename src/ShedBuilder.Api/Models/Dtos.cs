@@ -31,6 +31,9 @@ public record CreateDesignRequest : IValidatableObject
 
     public RoofType RoofType { get; init; } = RoofType.Gable;
 
+    [Range(0, 36)]
+    public int RoofOverhangInches { get; init; } = 12;
+
     public List<OpeningDto>? Openings { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -68,6 +71,9 @@ public record UpdateDesignRequest : IValidatableObject
 
     public RoofType? RoofType { get; init; }
 
+    [Range(0, 36)]
+    public int? RoofOverhangInches { get; init; }
+
     public List<OpeningDto>? Openings { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -89,6 +95,7 @@ public record DesignResponse
     public int HeightInches { get; init; }
     public decimal RoofPitch { get; init; }
     public RoofType RoofType { get; init; }
+    public int RoofOverhangInches { get; init; }
     public List<OpeningDto> Openings { get; init; } = new();
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
@@ -170,6 +177,7 @@ public record VersionResponse
     public int HeightInches { get; init; }
     public decimal RoofPitch { get; init; }
     public RoofType RoofType { get; init; }
+    public int RoofOverhangInches { get; init; }
     public List<OpeningDto> Openings { get; init; } = new();
     public DateTime CreatedAt { get; init; }
 }

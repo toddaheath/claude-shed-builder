@@ -96,6 +96,7 @@ public class DesignsController : AuthenticatedControllerBase
             HeightInches = request.HeightInches,
             RoofPitch = request.RoofPitch,
             RoofType = request.RoofType,
+            RoofOverhangInches = request.RoofOverhangInches,
             Openings = request.Openings?.Select(o => new Opening
             {
                 Type = o.Type,
@@ -136,6 +137,7 @@ public class DesignsController : AuthenticatedControllerBase
         if (request.HeightInches.HasValue) design.HeightInches = request.HeightInches.Value;
         if (request.RoofPitch.HasValue) design.RoofPitch = request.RoofPitch.Value;
         if (request.RoofType.HasValue) design.RoofType = request.RoofType.Value;
+        if (request.RoofOverhangInches.HasValue) design.RoofOverhangInches = request.RoofOverhangInches.Value;
         if (request.Openings != null)
         {
             design.Openings = request.Openings.Select(o => new Opening
@@ -301,6 +303,7 @@ public class DesignsController : AuthenticatedControllerBase
             HeightInches = design.HeightInches,
             RoofPitch = design.RoofPitch,
             RoofType = design.RoofType,
+            RoofOverhangInches = design.RoofOverhangInches,
             Openings = design.Openings.Select(o => new Opening
             {
                 Type = o.Type,
@@ -353,6 +356,7 @@ public class DesignsController : AuthenticatedControllerBase
         design.HeightInches = version.HeightInches;
         design.RoofPitch = version.RoofPitch;
         design.RoofType = version.RoofType;
+        design.RoofOverhangInches = version.RoofOverhangInches;
         design.Openings = version.Openings.Select(o => new Opening
         {
             Type = o.Type,
@@ -380,6 +384,7 @@ public class DesignsController : AuthenticatedControllerBase
         HeightInches = d.HeightInches,
         RoofPitch = d.RoofPitch,
         RoofType = d.RoofType,
+        RoofOverhangInches = d.RoofOverhangInches,
         Openings = d.Openings.Select(o => new OpeningDto
         {
             Type = o.Type,
@@ -464,6 +469,7 @@ public class DesignsController : AuthenticatedControllerBase
         HeightInches = v.HeightInches,
         RoofPitch = v.RoofPitch,
         RoofType = v.RoofType,
+        RoofOverhangInches = v.RoofOverhangInches,
         Openings = v.Openings.Select(o => new OpeningDto
         {
             Type = o.Type,

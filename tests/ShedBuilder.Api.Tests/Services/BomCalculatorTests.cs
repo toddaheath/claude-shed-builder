@@ -339,6 +339,52 @@ public class BomCalculatorTests
     }
 
     [Fact]
+    public void Calculate_Gable_OverhangIncreasesRafterLength()
+    {
+        var noOverhang = CreateDesign();
+        noOverhang.RoofOverhangInches = 0;
+        var withOverhang = CreateDesign();
+        withOverhang.RoofOverhangInches = 24;
+
+        var noOhResult = _calculator.Calculate(noOverhang);
+        var ohResult = _calculator.Calculate(withOverhang);
+
+        var noOhRafter = noOhResult.Items.First(i => i.Category == "Roof" && i.Dimensions.Contains("2×6"));
+        var ohRafter = ohResult.Items.First(i => i.Category == "Roof" && i.Dimensions.Contains("2×6"));
+        Assert.NotEqual(noOhRafter.Dimensions, ohRafter.Dimensions);
+    }
+
+    [Fact]
+    public void Calculate_LeanTo_OverhangIncreasesSheathing()
+    {
+        var noOverhang = CreateDesign(roofType: RoofType.LeanTo);
+        noOverhang.RoofOverhangInches = 0;
+        var withOverhang = CreateDesign(roofType: RoofType.LeanTo);
+        withOverhang.RoofOverhangInches = 24;
+
+        var noOhResult = _calculator.Calculate(noOverhang);
+        var ohResult = _calculator.Calculate(withOverhang);
+
+        var noOhSheathing = noOhResult.Items.First(i => i.Category == "Roof" && i.Material == "Plywood sheathing");
+        var ohSheathing = ohResult.Items.First(i => i.Category == "Roof" && i.Material == "Plywood sheathing");
+        Assert.True(ohSheathing.Quantity >= noOhSheathing.Quantity);
+    }
+
+    [Fact]
+    public void Calculate_ZeroOverhang_ProducesValidResults()
+    {
+        var design = CreateDesign();
+        design.RoofOverhangInches = 0;
+        var result = _calculator.Calculate(design);
+
+        Assert.Contains(result.Items, i => i.Category == "Roof");
+        foreach (var item in result.Items)
+        {
+            Assert.True(item.Quantity > 0, $"{item.Material} has quantity {item.Quantity}");
+        }
+    }
+
+    [Fact]
     public void Calculate_SmallShed_AllQuantitiesPositive()
     {
         var design = CreateDesign(widthFeet: 4, depthFeet: 4, heightFeet: 6, roofPitch: 2);

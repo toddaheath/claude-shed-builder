@@ -26,7 +26,7 @@ public class BomCalculator : IBomCalculator
 
         items.AddRange(CalculateFloor(widthInches, depthInches));
         items.AddRange(CalculateWalls(widthInches, depthInches, heightInches, design.Openings));
-        items.AddRange(CalculateRoof(widthInches, depthInches, roofPitch, design.RoofType));
+        items.AddRange(CalculateRoof(widthInches, depthInches, roofPitch, design.RoofType, (double)design.RoofOverhangInches));
         items.AddRange(CalculateHardware(widthInches, depthInches, heightInches, design.RoofType));
         items.AddRange(CalculateOpenings(design.Openings));
 
@@ -131,19 +131,22 @@ public class BomCalculator : IBomCalculator
         return items;
     }
 
-    private List<BomItem> CalculateRoof(double widthIn, double depthIn, double roofPitch, RoofType roofType)
+    private List<BomItem> CalculateRoof(double widthIn, double depthIn, double roofPitch, RoofType roofType, double overhangIn)
     {
         var items = new List<BomItem>();
 
         if (roofType == RoofType.Gable)
         {
-            // Gable roof: ridge runs along depth, rafters span half the width
+            // Gable roof: ridge runs along depth, rafters span half the width + overhang
             var halfSpan = widthIn / 2.0;
             var rise = halfSpan * roofPitch / 12.0;
-            var rafterLength = Math.Sqrt(halfSpan * halfSpan + rise * rise);
+            var rafterSpan = halfSpan + overhangIn;
+            var rafterRise = rafterSpan * roofPitch / 12.0;
+            var rafterLength = Math.Sqrt(rafterSpan * rafterSpan + rafterRise * rafterRise);
 
             // Rafters at 16" OC on each side
-            var raftersPerSide = (int)Math.Ceiling(depthIn / 16.0) + 1;
+            var roofDepth = depthIn + 2 * overhangIn;
+            var raftersPerSide = (int)Math.Ceiling(roofDepth / 16.0) + 1;
             items.Add(new BomItem
             {
                 Material = "Framing lumber",
@@ -157,14 +160,14 @@ public class BomCalculator : IBomCalculator
             items.Add(new BomItem
             {
                 Material = "Framing lumber",
-                Dimensions = $"2×8 × {LengthLabel(depthIn)}",
+                Dimensions = $"2×8 × {LengthLabel(roofDepth)}",
                 Quantity = 1,
                 Unit = "pieces",
                 Category = "Roof"
             });
 
             // Roof sheathing (both sides)
-            var roofSqFtPerSide = (rafterLength * depthIn) / 144.0;
+            var roofSqFtPerSide = (rafterLength * roofDepth) / 144.0;
             var roofSheets = (int)Math.Ceiling(roofSqFtPerSide * 2 / 32.0);
             items.Add(new BomItem
             {
@@ -189,11 +192,13 @@ public class BomCalculator : IBomCalculator
         }
         else // LeanTo
         {
-            // Lean-to: single slope from high side to low side across width
-            var rise = widthIn * roofPitch / 12.0;
-            var rafterLength = Math.Sqrt(widthIn * widthIn + rise * rise);
+            // Lean-to: single slope from high side to low side across width + overhang
+            var rafterSpan = widthIn + overhangIn;
+            var rafterRise = rafterSpan * roofPitch / 12.0;
+            var rafterLength = Math.Sqrt(rafterSpan * rafterSpan + rafterRise * rafterRise);
 
-            var rafterCount = (int)Math.Ceiling(depthIn / 16.0) + 1;
+            var roofDepth = depthIn + 2 * overhangIn;
+            var rafterCount = (int)Math.Ceiling(roofDepth / 16.0) + 1;
             items.Add(new BomItem
             {
                 Material = "Framing lumber",
@@ -204,7 +209,7 @@ public class BomCalculator : IBomCalculator
             });
 
             // Roof sheathing
-            var roofSqFt = (rafterLength * depthIn) / 144.0;
+            var roofSqFt = (rafterLength * roofDepth) / 144.0;
             var roofSheets = (int)Math.Ceiling(roofSqFt / 32.0);
             items.Add(new BomItem
             {

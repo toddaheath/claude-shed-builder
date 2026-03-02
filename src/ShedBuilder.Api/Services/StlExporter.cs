@@ -56,30 +56,32 @@ public class StlExporter : IStlExporter
             new Vec3(1, 0, 0)));
 
         // Roof
+        var oh = (float)design.RoofOverhangInches;
+
         if (design.RoofType == RoofType.Gable)
         {
             var rise = width / 2f * pitch / 12f;
             var ridgeY = height + rise;
             var ridgeX = width / 2f;
 
-            // Left roof slope
+            // Left roof slope (extended by overhang on all edges)
             triangles.AddRange(MakeQuad(
-                new Vec3(0, height, 0), new Vec3(ridgeX, ridgeY, 0),
-                new Vec3(ridgeX, ridgeY, depth), new Vec3(0, height, depth),
-                ComputeNormal(new Vec3(0, height, 0), new Vec3(ridgeX, ridgeY, 0), new Vec3(ridgeX, ridgeY, depth))));
+                new Vec3(-oh, height, -oh), new Vec3(ridgeX, ridgeY, -oh),
+                new Vec3(ridgeX, ridgeY, depth + oh), new Vec3(-oh, height, depth + oh),
+                ComputeNormal(new Vec3(-oh, height, 0), new Vec3(ridgeX, ridgeY, 0), new Vec3(ridgeX, ridgeY, depth))));
 
-            // Right roof slope
+            // Right roof slope (extended by overhang on all edges)
             triangles.AddRange(MakeQuad(
-                new Vec3(ridgeX, ridgeY, 0), new Vec3(width, height, 0),
-                new Vec3(width, height, depth), new Vec3(ridgeX, ridgeY, depth),
-                ComputeNormal(new Vec3(ridgeX, ridgeY, 0), new Vec3(width, height, 0), new Vec3(width, height, depth))));
+                new Vec3(ridgeX, ridgeY, -oh), new Vec3(width + oh, height, -oh),
+                new Vec3(width + oh, height, depth + oh), new Vec3(ridgeX, ridgeY, depth + oh),
+                ComputeNormal(new Vec3(ridgeX, ridgeY, 0), new Vec3(width + oh, height, 0), new Vec3(width + oh, height, depth))));
 
-            // Front gable triangle
+            // Front gable triangle (stays at wall face)
             triangles.Add(new Triangle(
                 ComputeNormal(new Vec3(0, height, 0), new Vec3(width, height, 0), new Vec3(ridgeX, ridgeY, 0)),
                 new Vec3(0, height, 0), new Vec3(width, height, 0), new Vec3(ridgeX, ridgeY, 0)));
 
-            // Back gable triangle
+            // Back gable triangle (stays at wall face)
             triangles.Add(new Triangle(
                 ComputeNormal(new Vec3(width, height, depth), new Vec3(0, height, depth), new Vec3(ridgeX, ridgeY, depth)),
                 new Vec3(width, height, depth), new Vec3(0, height, depth), new Vec3(ridgeX, ridgeY, depth)));
@@ -89,18 +91,18 @@ public class StlExporter : IStlExporter
             var rise = width * pitch / 12f;
             var highY = height + rise;
 
-            // Single slope from left (high) to right (low at wall height)
+            // Single slope (extended by overhang)
             triangles.AddRange(MakeQuad(
-                new Vec3(0, highY, 0), new Vec3(width, height, 0),
-                new Vec3(width, height, depth), new Vec3(0, highY, depth),
-                ComputeNormal(new Vec3(0, highY, 0), new Vec3(width, height, 0), new Vec3(width, height, depth))));
+                new Vec3(-oh, highY, -oh), new Vec3(width + oh, height, -oh),
+                new Vec3(width + oh, height, depth + oh), new Vec3(-oh, highY, depth + oh),
+                ComputeNormal(new Vec3(-oh, highY, 0), new Vec3(width + oh, height, 0), new Vec3(width + oh, height, depth))));
 
             // Front triangle fill
             triangles.Add(new Triangle(
                 new Vec3(0, 0, -1),
                 new Vec3(0, height, 0), new Vec3(0, highY, 0), new Vec3(width, height, 0)));
 
-            // Back triangle fill (note: this is a simplification)
+            // Back triangle fill
             triangles.Add(new Triangle(
                 new Vec3(0, 0, 1),
                 new Vec3(width, height, depth), new Vec3(0, highY, depth), new Vec3(0, height, depth)));

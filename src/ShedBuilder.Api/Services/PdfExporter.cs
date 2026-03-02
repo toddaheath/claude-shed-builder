@@ -52,6 +52,8 @@ public class PdfExporter : IPdfExporter
                         table.Cell().Text($"{design.RoofPitch}/12");
                         table.Cell().Text("Roof Type:").SemiBold();
                         table.Cell().Text(design.RoofType.ToString());
+                        table.Cell().Text("Roof Overhang:").SemiBold();
+                        table.Cell().Text($"{design.RoofOverhangInches}\"");
                     });
 
                     // Openings

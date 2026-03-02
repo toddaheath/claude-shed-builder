@@ -22,6 +22,7 @@ export interface Design {
   heightInches: number;
   roofPitch: number;
   roofType: RoofType;
+  roofOverhangInches: number;
   openings: Opening[];
   createdAt: string;
   updatedAt: string;
@@ -37,6 +38,7 @@ export interface CreateDesignRequest {
   heightInches?: number;
   roofPitch?: number;
   roofType?: RoofType;
+  roofOverhangInches?: number;
   openings?: Opening[];
 }
 
@@ -50,6 +52,7 @@ export interface UpdateDesignRequest {
   heightInches?: number;
   roofPitch?: number;
   roofType?: RoofType;
+  roofOverhangInches?: number;
   openings?: Opening[];
 }
 
@@ -95,6 +98,7 @@ export interface DesignVersion {
   heightInches: number;
   roofPitch: number;
   roofType: RoofType;
+  roofOverhangInches: number;
   openings: Opening[];
   createdAt: string;
 }

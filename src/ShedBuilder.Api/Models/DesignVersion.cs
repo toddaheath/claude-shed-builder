@@ -47,6 +47,9 @@ public class DesignVersion
     [Column("roof_type")]
     public RoofType RoofType { get; set; }
 
+    [Column("roof_overhang_inches")]
+    public int RoofOverhangInches { get; set; } = 12;
+
     [Column("openings", TypeName = "jsonb")]
     public List<Opening> Openings { get; set; } = new();
 
