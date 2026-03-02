@@ -200,6 +200,43 @@ describe('DesignList', () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
+  it('shows dimensions without openings summary when no openings', () => {
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    // Shed A: 8' × 10' with no openings — no "door" or "window" text
+    expect(screen.getByText("8' × 10'")).toBeInTheDocument();
+  });
+
+  it('shows opening count in design summary', () => {
+    const designsWithOpenings: Design[] = [
+      {
+        ...mockDesigns[0],
+        openings: [
+          { type: 'Door', wall: 'Front', widthInches: 36, heightInches: 80, offsetInches: 12, sillHeightInches: 0 },
+          { type: 'Window', wall: 'Right', widthInches: 30, heightInches: 24, offsetInches: 24, sillHeightInches: 48 },
+          { type: 'Window', wall: 'Back', widthInches: 30, heightInches: 24, offsetInches: 24, sillHeightInches: 48 },
+        ],
+      },
+    ];
+    render(
+      <DesignList
+        designs={designsWithOpenings}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/1 door, 2 windows/)).toBeInTheDocument();
+  });
+
   it('shows duplicate button when onDuplicate is provided', () => {
     render(
       <DesignList
