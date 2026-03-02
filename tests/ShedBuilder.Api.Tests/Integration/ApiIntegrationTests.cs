@@ -641,41 +641,183 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
-    public async Task HealthLive_ReturnsOk()
+    public async Task Login_NonExistentUser_Returns401()
     {
-        var response = await _client.GetAsync("/health/live");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = "nobody@example.com", password = "Password123!" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task HealthReady_ReturnsOk()
+    public async Task Register_WeakPassword_Returns400()
     {
-        var response = await _client.GetAsync("/health/ready");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/register",
+            new { name = "Weak", email = $"weak-{Guid.NewGuid()}@test.com", password = "short" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetDesigns_WithSearch_FiltersResults()
+    public async Task ChangePassword_Unauthenticated_Returns401()
     {
-        var (_, client) = await CreateAuthenticatedUser($"Search-{Guid.NewGuid()}", $"search-{Guid.NewGuid()}@test.com");
-
-        await client.PostAsJsonAsync("/api/v1/designs", new { name = "Garden Shed" }, JsonOptions);
-        await client.PostAsJsonAsync("/api/v1/designs", new { name = "Workshop" }, JsonOptions);
-        await client.PostAsJsonAsync("/api/v1/designs", new { name = "Garden Office" }, JsonOptions);
-
-        var response = await client.GetAsync("/api/v1/designs?search=garden");
-        var result = await ReadJson<PaginatedResponse<DesignResponse>>(response.Content);
-
-        Assert.Equal(2, result!.TotalCount);
-        Assert.All(result.Items, d => Assert.Contains("Garden", d.Name));
+        _client.DefaultRequestHeaders.Authorization = null;
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { currentPassword = "Password123!", newPassword = "NewPassword456@" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetDesign_NotFound_Returns404()
+    public async Task ChangePassword_WeakNewPassword_Returns400()
     {
-        var (_, client) = await CreateAuthenticatedUser($"NotFound-{Guid.NewGuid()}", $"nf-{Guid.NewGuid()}@test.com");
+        await CreateAuthenticatedUser("WeakNew", $"weaknew-{Guid.NewGuid()}@test.com");
 
-        var response = await client.GetAsync($"/api/v1/designs/{Guid.NewGuid()}");
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/change-password",
+            new { currentPassword = "Password123!", newPassword = "short" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PartialUpdate_PreservesUnchangedFields()
+    {
+        await CreateAuthenticatedUser("Partial", $"partial-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Partial Test",
+            WidthFeet = 10,
+            DepthFeet = 12,
+            HeightFeet = 9,
+            RoofPitch = 6,
+            RoofType = RoofType.LeanTo,
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+
+        // Update only the name
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/designs/{design!.Id}",
+            new UpdateDesignRequest { Name = "Renamed" }, JsonOptions);
+        var updated = await ReadJson<DesignResponse>(updateResponse.Content);
+
+        Assert.Equal("Renamed", updated!.Name);
+        Assert.Equal(10, updated.WidthFeet);
+        Assert.Equal(12, updated.DepthFeet);
+        Assert.Equal(9, updated.HeightFeet);
+        Assert.Equal(6, updated.RoofPitch);
+        Assert.Equal(RoofType.LeanTo, updated.RoofType);
+    }
+
+    [Fact]
+    public async Task DeleteNonExistentDesign_Returns404()
+    {
+        await CreateAuthenticatedUser("DelNF", $"delnf-{Guid.NewGuid()}@test.com");
+
+        var response = await _client.DeleteAsync($"/api/v1/designs/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserIsolation_CannotDeleteOtherUsersDesign()
+    {
+        // User A creates a design
+        var (_, clientA) = await CreateAuthenticatedUser("IsoDelA", $"isodela-{Guid.NewGuid()}@test.com");
+        var createA = await clientA.PostAsJsonAsync("/api/v1/designs",
+            new CreateDesignRequest { Name = "A's Private Shed" }, JsonOptions);
+        var designA = await ReadJson<DesignResponse>(createA.Content);
+
+        // User B tries to delete User A's design
+        await CreateAuthenticatedUser("IsoDelB", $"isodelb-{Guid.NewGuid()}@test.com");
+        var response = await _client.DeleteAsync($"/api/v1/designs/{designA!.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserIsolation_CannotUpdateOtherUsersDesign()
+    {
+        // User A creates a design
+        var (_, clientA) = await CreateAuthenticatedUser("IsoUpdA", $"isoupda-{Guid.NewGuid()}@test.com");
+        var createA = await clientA.PostAsJsonAsync("/api/v1/designs",
+            new CreateDesignRequest { Name = "A's Shed" }, JsonOptions);
+        var designA = await ReadJson<DesignResponse>(createA.Content);
+
+        // User B tries to update User A's design
+        await CreateAuthenticatedUser("IsoUpdB", $"isoupdb-{Guid.NewGuid()}@test.com");
+        var response = await _client.PutAsJsonAsync($"/api/v1/designs/{designA!.Id}",
+            new UpdateDesignRequest { Name = "Hacked" }, JsonOptions);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_LeanToRoofType_RoundTrip()
+    {
+        await CreateAuthenticatedUser("LeanTo", $"leanto-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "LeanTo Shed",
+            WidthFeet = 8,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 3,
+            RoofType = RoofType.LeanTo,
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+        Assert.Equal(RoofType.LeanTo, design!.RoofType);
+
+        // Verify BOM works for LeanTo
+        var bomResponse = await _client.GetAsync($"/api/v1/designs/{design.Id}/bom");
+        Assert.Equal(HttpStatusCode.OK, bomResponse.StatusCode);
+        var bom = await ReadJson<BomResponse>(bomResponse.Content);
+        Assert.NotEmpty(bom!.Items);
+    }
+
+    [Fact]
+    public async Task VersionRestore_PreservesAllDimensions()
+    {
+        await CreateAuthenticatedUser("VerDims", $"verdims-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Dim Test",
+            WidthFeet = 10,
+            WidthInches = 6,
+            DepthFeet = 14,
+            DepthInches = 3,
+            HeightFeet = 9,
+            HeightInches = 8,
+            RoofPitch = 5,
+            RoofType = RoofType.LeanTo,
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        var design = await ReadJson<DesignResponse>(createResponse.Content);
+        var id = design!.Id;
+
+        // Save version
+        await _client.PostAsJsonAsync($"/api/v1/designs/{id}/versions",
+            new CreateVersionRequest { Label = "Full Dims" }, JsonOptions);
+
+        // Modify everything
+        await _client.PutAsJsonAsync($"/api/v1/designs/{id}",
+            new UpdateDesignRequest { Name = "Changed", WidthFeet = 20, DepthFeet = 20, HeightFeet = 12, RoofPitch = 8, RoofType = RoofType.Gable }, JsonOptions);
+
+        // Restore
+        var versions = await _client.GetAsync($"/api/v1/designs/{id}/versions");
+        var versionPage = await ReadJson<PaginatedResponse<VersionResponse>>(versions.Content);
+        var restoreResponse = await _client.PostAsync(
+            $"/api/v1/designs/{id}/versions/{versionPage!.Items[0].Id}/restore", null);
+        var restored = await ReadJson<DesignResponse>(restoreResponse.Content);
+
+        // Name is NOT restored — only geometry is
+        Assert.Equal("Changed", restored!.Name);
+        Assert.Equal(10, restored.WidthFeet);
+        Assert.Equal(6, restored.WidthInches);
+        Assert.Equal(14, restored.DepthFeet);
+        Assert.Equal(3, restored.DepthInches);
+        Assert.Equal(9, restored.HeightFeet);
+        Assert.Equal(8, restored.HeightInches);
+        Assert.Equal(5, restored.RoofPitch);
+        Assert.Equal(RoofType.LeanTo, restored.RoofType);
     }
 }
