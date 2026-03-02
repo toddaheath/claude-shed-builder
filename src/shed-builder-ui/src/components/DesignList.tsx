@@ -16,6 +16,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import type { Design } from '../types';
@@ -26,9 +27,10 @@ interface Props {
   onSelect: (id: string) => void;
   onCreate: (name: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate?: (design: Design) => void;
 }
 
-export default memo(function DesignList({ designs, selectedId, onSelect, onCreate, onDelete }: Props) {
+export default memo(function DesignList({ designs, selectedId, onSelect, onCreate, onDelete, onDuplicate }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -90,6 +92,18 @@ export default memo(function DesignList({ designs, selectedId, onSelect, onCreat
               secondary={`${d.widthFeet}'${d.widthInches ? d.widthInches + '"' : ''} × ${d.depthFeet}'${d.depthInches ? d.depthInches + '"' : ''}`}
             />
             <ListItemSecondaryAction>
+              {onDuplicate && (
+                <IconButton
+                  size="small"
+                  aria-label={`Duplicate ${d.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(d);
+                  }}
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              )}
               <IconButton
                 edge="end"
                 size="small"

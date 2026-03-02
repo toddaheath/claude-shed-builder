@@ -199,4 +199,51 @@ describe('DesignList', () => {
 
     expect(onCreate).not.toHaveBeenCalled();
   });
+
+  it('shows duplicate button when onDuplicate is provided', () => {
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Duplicate Shed A')).toBeInTheDocument();
+    expect(screen.getByLabelText('Duplicate Shed B')).toBeInTheDocument();
+  });
+
+  it('calls onDuplicate with design when duplicate button is clicked', async () => {
+    const onDuplicate = vi.fn();
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={onDuplicate}
+      />
+    );
+
+    await userEvent.click(screen.getByLabelText('Duplicate Shed A'));
+    expect(onDuplicate).toHaveBeenCalledWith(mockDesigns[0]);
+  });
+
+  it('hides duplicate button when onDuplicate is not provided', () => {
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByLabelText('Duplicate Shed A')).not.toBeInTheDocument();
+  });
 });

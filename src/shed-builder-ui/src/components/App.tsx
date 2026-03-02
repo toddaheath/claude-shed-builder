@@ -24,7 +24,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import CircularProgress from '@mui/material/CircularProgress';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import type { Design, UpdateDesignRequest } from '../types';
+import type { Design, UpdateDesignRequest, CreateDesignRequest } from '../types';
 import { api, getStoredToken, setStoredToken, extractApiError } from '../services/api';
 import { useDesignApi } from '../hooks/useDesignApi';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -341,6 +341,25 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
     [createDesign]
   );
 
+  const handleDuplicateDesign = useCallback(
+    (design: Design) => {
+      const req: CreateDesignRequest = {
+        name: `${design.name} (Copy)`,
+        widthFeet: design.widthFeet,
+        widthInches: design.widthInches,
+        depthFeet: design.depthFeet,
+        depthInches: design.depthInches,
+        heightFeet: design.heightFeet,
+        heightInches: design.heightInches,
+        roofPitch: design.roofPitch,
+        roofType: design.roofType,
+        openings: design.openings,
+      };
+      createDesign(req).then((d) => { if (d) setLocalDesign(d); });
+    },
+    [createDesign]
+  );
+
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       <a href="#main-content" style={{
@@ -404,6 +423,7 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
             onSelect={handleSelectDesign}
             onCreate={handleCreateDesign}
             onDelete={deleteDesign}
+            onDuplicate={handleDuplicateDesign}
           />
         </nav>
       </Drawer>
