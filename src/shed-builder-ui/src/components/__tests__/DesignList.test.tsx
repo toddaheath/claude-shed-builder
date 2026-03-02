@@ -92,6 +92,50 @@ describe('DesignList', () => {
     expect(onDelete).toHaveBeenCalledWith('1');
   });
 
+  it('shows search box when more than 3 designs and filters results', async () => {
+    const fourDesigns: Design[] = [
+      { ...mockDesigns[0], id: '1', name: 'Garden Shed' },
+      { ...mockDesigns[1], id: '2', name: 'Workshop' },
+      { ...mockDesigns[0], id: '3', name: 'Garden Office' },
+      { ...mockDesigns[1], id: '4', name: 'Tool Shed' },
+    ];
+    render(
+      <DesignList
+        designs={fourDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    // Search box should appear with >3 designs
+    const searchInput = screen.getByPlaceholderText('Search designs...');
+    expect(searchInput).toBeInTheDocument();
+
+    // Type to filter
+    await userEvent.type(searchInput, 'garden');
+
+    // Only Garden Shed and Garden Office should be visible
+    expect(screen.getByText('Garden Shed')).toBeInTheDocument();
+    expect(screen.getByText('Garden Office')).toBeInTheDocument();
+    expect(screen.queryByText('Workshop')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tool Shed')).not.toBeInTheDocument();
+  });
+
+  it('hides search box when 3 or fewer designs', () => {
+    render(
+      <DesignList
+        designs={mockDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.queryByPlaceholderText('Search designs...')).not.toBeInTheDocument();
+  });
+
   it('cancels delete without calling onDelete', async () => {
     const onDelete = vi.fn();
     render(
