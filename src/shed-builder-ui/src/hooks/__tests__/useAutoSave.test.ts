@@ -84,6 +84,70 @@ describe('useAutoSave', () => {
     expect(result.current).toBe('error');
   });
 
+  it('resets status to idle when designId changes', async () => {
+    let resolveUpdate: () => void;
+    vi.mocked(api.updateDesign).mockImplementation(
+      () => new Promise<Design>((resolve) => { resolveUpdate = () => resolve({} as Design); })
+    );
+
+    const data = { name: 'Test' };
+    const { result, rerender } = renderHook(
+      ({ id, d }) => useAutoSave(id, d),
+      { initialProps: { id: 'design-1', d: data } }
+    );
+
+    // Trigger save and reach 'saved' state
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      resolveUpdate!();
+    });
+    expect(result.current).toBe('saved');
+
+    // Change designId — status should reset to idle
+    rerender({ id: 'design-2', d: data });
+    expect(result.current).toBe('idle');
+  });
+
+  it('does not save when designId is null', async () => {
+    vi.mocked(api.updateDesign).mockClear();
+
+    renderHook(() => useAutoSave(null, { name: 'Test' }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(api.updateDesign).not.toHaveBeenCalled();
+  });
+
+  it('saves again when data changes', async () => {
+    vi.mocked(api.updateDesign).mockClear();
+
+    const { rerender } = renderHook(
+      ({ id, d }) => useAutoSave(id, d),
+      { initialProps: { id: 'design-1', d: { name: 'First' } } }
+    );
+
+    // First save
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(api.updateDesign).toHaveBeenCalledTimes(1);
+    expect(api.updateDesign).toHaveBeenCalledWith('design-1', { name: 'First' });
+
+    // Change data
+    rerender({ id: 'design-1', d: { name: 'Second' } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    expect(api.updateDesign).toHaveBeenCalledTimes(2);
+    expect(api.updateDesign).toHaveBeenLastCalledWith('design-1', { name: 'Second' });
+  });
+
   it('does not re-save on identical data', async () => {
     vi.mocked(api.updateDesign).mockClear();
 
