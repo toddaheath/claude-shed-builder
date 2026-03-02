@@ -205,4 +205,90 @@ public class StlExporterTests
             }
         }
     }
+
+    [Fact]
+    public void Export_WithOpenings_ProducesValidStl()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door,
+            Wall = WallSide.Front,
+            WidthInches = 36,
+            HeightInches = 80,
+            OffsetInches = 12,
+            SillHeightInches = 0
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window,
+            Wall = WallSide.Right,
+            WidthInches = 30,
+            HeightInches = 24,
+            OffsetInches = 24,
+            SillHeightInches = 48
+        });
+
+        var result = _exporter.Export(design);
+
+        Assert.True(result.Length >= 84);
+        var triangleCount = BitConverter.ToUInt32(result, 80);
+        var expectedLength = 84 + triangleCount * 50;
+        Assert.Equal(expectedLength, (uint)result.Length);
+    }
+
+    [Fact]
+    public void Export_ZeroPitch_ProducesValidStl()
+    {
+        var design = new Design
+        {
+            Id = Guid.NewGuid(),
+            Name = "Flat Roof",
+            WidthFeet = 8,
+            WidthInches = 0,
+            DepthFeet = 10,
+            DepthInches = 0,
+            HeightFeet = 8,
+            HeightInches = 0,
+            RoofPitch = 0,
+            RoofType = RoofType.LeanTo,
+        };
+
+        var result = _exporter.Export(design);
+        Assert.True(result.Length >= 84);
+
+        var triangleCount = BitConverter.ToUInt32(result, 80);
+        for (uint i = 0; i < triangleCount; i++)
+        {
+            var offset = 84 + i * 50;
+            for (int c = 0; c < 12; c++)
+            {
+                var val = BitConverter.ToSingle(result, (int)offset + c * 4);
+                Assert.False(float.IsNaN(val) || float.IsInfinity(val));
+            }
+        }
+    }
+
+    [Fact]
+    public void Export_SmallShed_ProducesValidStl()
+    {
+        var design = new Design
+        {
+            Id = Guid.NewGuid(),
+            Name = "Tiny Shed",
+            WidthFeet = 4,
+            WidthInches = 0,
+            DepthFeet = 4,
+            DepthInches = 0,
+            HeightFeet = 6,
+            HeightInches = 0,
+            RoofPitch = 2,
+            RoofType = RoofType.Gable,
+        };
+
+        var result = _exporter.Export(design);
+        Assert.True(result.Length >= 84);
+        var triangleCount = BitConverter.ToUInt32(result, 80);
+        Assert.Equal(16u, triangleCount);
+    }
 }

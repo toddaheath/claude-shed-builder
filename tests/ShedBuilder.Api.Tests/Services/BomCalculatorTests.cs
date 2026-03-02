@@ -337,4 +337,69 @@ public class BomCalculatorTests
 
         Assert.True(withOpeningsOsb <= noOpeningsOsb);
     }
+
+    [Fact]
+    public void Calculate_SmallShed_AllQuantitiesPositive()
+    {
+        var design = CreateDesign(widthFeet: 4, depthFeet: 4, heightFeet: 6, roofPitch: 2);
+        var result = _calculator.Calculate(design);
+
+        Assert.NotEmpty(result.Items);
+        foreach (var item in result.Items)
+        {
+            Assert.True(item.Quantity > 0, $"{item.Material} has quantity {item.Quantity}");
+        }
+    }
+
+    [Fact]
+    public void Calculate_MultipleSameWindowsGrouped()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window, Wall = WallSide.Front,
+            WidthInches = 36, HeightInches = 24, OffsetInches = 0, SillHeightInches = 48
+        });
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Window, Wall = WallSide.Back,
+            WidthInches = 36, HeightInches = 24, OffsetInches = 0, SillHeightInches = 48
+        });
+
+        var result = _calculator.Calculate(design);
+
+        var windows = result.Items.Where(i => i.Material == "Window unit").ToList();
+        Assert.Single(windows);
+        Assert.Equal(2, windows[0].Quantity);
+    }
+
+    [Fact]
+    public void Calculate_NoOpenings_NoOpeningsCategory()
+    {
+        var design = CreateDesign();
+        var result = _calculator.Calculate(design);
+
+        Assert.DoesNotContain(result.Items, i => i.Category == "Openings");
+    }
+
+    [Fact]
+    public void Calculate_AllItemsHaveNonEmptyFields()
+    {
+        var design = CreateDesign();
+        design.Openings.Add(new Opening
+        {
+            Type = OpeningType.Door, Wall = WallSide.Front,
+            WidthInches = 36, HeightInches = 80, OffsetInches = 12, SillHeightInches = 0
+        });
+
+        var result = _calculator.Calculate(design);
+
+        foreach (var item in result.Items)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(item.Material), "Material should not be empty");
+            Assert.False(string.IsNullOrWhiteSpace(item.Dimensions), "Dimensions should not be empty");
+            Assert.False(string.IsNullOrWhiteSpace(item.Unit), "Unit should not be empty");
+            Assert.False(string.IsNullOrWhiteSpace(item.Category), "Category should not be empty");
+        }
+    }
 }
