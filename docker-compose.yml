@@ -24,6 +24,7 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=shedbuilder;Username=shedbuilder;Password=shedbuilder_dev"
       ASPNETCORE_ENVIRONMENT: Development
+      Jwt__SecretKey: "dev-secret-key-change-in-production-at-least-32-chars!"
     depends_on:
       postgres:
         condition: service_healthy
