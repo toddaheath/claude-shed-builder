@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import DimensionInput from './DimensionInput';
 import type { Design, UpdateDesignRequest, SaveStatus, RoofType, Opening, OpeningType, WallSide } from '../types';
 
 interface Props {
@@ -76,65 +77,31 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
         sx={{ mb: 2 }}
       />
 
-      <Typography variant="subtitle2" gutterBottom id="width-label">Width</Typography>
-      <Stack direction="row" spacing={1} mb={2} role="group" aria-labelledby="width-label">
-        <TextField
-          label="Feet"
-          type="number"
-          size="small"
-          value={design.widthFeet}
-          onChange={(e) => onChange({ widthFeet: Number(e.target.value) })}
-          inputProps={{ min: 4, max: 60, 'aria-label': 'Width feet' }}
-        />
-        <TextField
-          label="Inches"
-          type="number"
-          size="small"
-          value={design.widthInches}
-          onChange={(e) => onChange({ widthInches: Number(e.target.value) })}
-          inputProps={{ min: 0, max: 11, 'aria-label': 'Width inches' }}
-        />
-      </Stack>
+      <DimensionInput
+        label="Width"
+        feet={design.widthFeet}
+        inches={design.widthInches}
+        onFeetChange={(v) => onChange({ widthFeet: v })}
+        onInchesChange={(v) => onChange({ widthInches: v })}
+      />
 
-      <Typography variant="subtitle2" gutterBottom id="depth-label">Depth</Typography>
-      <Stack direction="row" spacing={1} mb={2} role="group" aria-labelledby="depth-label">
-        <TextField
-          label="Feet"
-          type="number"
-          size="small"
-          value={design.depthFeet}
-          onChange={(e) => onChange({ depthFeet: Number(e.target.value) })}
-          inputProps={{ min: 4, max: 60, 'aria-label': 'Depth feet' }}
-        />
-        <TextField
-          label="Inches"
-          type="number"
-          size="small"
-          value={design.depthInches}
-          onChange={(e) => onChange({ depthInches: Number(e.target.value) })}
-          inputProps={{ min: 0, max: 11, 'aria-label': 'Depth inches' }}
-        />
-      </Stack>
+      <DimensionInput
+        label="Depth"
+        feet={design.depthFeet}
+        inches={design.depthInches}
+        onFeetChange={(v) => onChange({ depthFeet: v })}
+        onInchesChange={(v) => onChange({ depthInches: v })}
+      />
 
-      <Typography variant="subtitle2" gutterBottom id="height-label">Wall Height</Typography>
-      <Stack direction="row" spacing={1} mb={2} role="group" aria-labelledby="height-label">
-        <TextField
-          label="Feet"
-          type="number"
-          size="small"
-          value={design.heightFeet}
-          onChange={(e) => onChange({ heightFeet: Number(e.target.value) })}
-          inputProps={{ min: 6, max: 20, 'aria-label': 'Wall height feet' }}
-        />
-        <TextField
-          label="Inches"
-          type="number"
-          size="small"
-          value={design.heightInches}
-          onChange={(e) => onChange({ heightInches: Number(e.target.value) })}
-          inputProps={{ min: 0, max: 11, 'aria-label': 'Wall height inches' }}
-        />
-      </Stack>
+      <DimensionInput
+        label="Wall Height"
+        feet={design.heightFeet}
+        inches={design.heightInches}
+        onFeetChange={(v) => onChange({ heightFeet: v })}
+        onInchesChange={(v) => onChange({ heightInches: v })}
+        minFeet={6}
+        maxFeet={20}
+      />
 
       <TextField
         label="Roof Pitch (rise per 12 run)"
