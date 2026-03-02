@@ -135,87 +135,108 @@ export default memo(function DesignPanel({ design, onChange, saveStatus }: Props
         </Button>
       </Stack>
 
-      {(design.openings || []).map((opening, index) => (
-        <Box key={`${opening.type}-${opening.wall}-${index}`} sx={{ mb: 2, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography variant="body2" fontWeight="bold">
-              {opening.type} #{index + 1}
-            </Typography>
-            <IconButton size="small" onClick={() => removeOpening(index)} aria-label={`Remove ${opening.type} #${index + 1}`}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+      {(design.openings || []).map((opening, index) => {
+        const wallWidthIn = (opening.wall === 'Front' || opening.wall === 'Back')
+          ? design.widthFeet * 12 + design.widthInches
+          : design.depthFeet * 12 + design.depthInches;
+        const wallHeightIn = design.heightFeet * 12 + design.heightInches;
+        const tooWide = opening.offsetInches + opening.widthInches > wallWidthIn;
+        const tooTall = opening.sillHeightInches + opening.heightInches > wallHeightIn;
 
-          <Stack direction="row" spacing={1} mb={1}>
-            <FormControl size="small" sx={{ minWidth: 80 }}>
-              <InputLabel>Type</InputLabel>
-              <Select
-                value={opening.type}
-                label="Type"
-                onChange={(e) => updateOpening(index, { type: e.target.value as OpeningType })}
-              >
-                <MenuItem value="Door">Door</MenuItem>
-                <MenuItem value="Window">Window</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 80 }}>
-              <InputLabel>Wall</InputLabel>
-              <Select
-                value={opening.wall}
-                label="Wall"
-                onChange={(e) => updateOpening(index, { wall: e.target.value as WallSide })}
-              >
-                <MenuItem value="Front">Front</MenuItem>
-                <MenuItem value="Back">Back</MenuItem>
-                <MenuItem value="Left">Left</MenuItem>
-                <MenuItem value="Right">Right</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
+        return (
+          <Box key={`${opening.type}-${opening.wall}-${index}`} sx={{ mb: 2, p: 1.5, border: '1px solid', borderColor: tooWide || tooTall ? 'error.main' : 'divider', borderRadius: 1 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="body2" fontWeight="bold">
+                {opening.type} #{index + 1}
+              </Typography>
+              <IconButton size="small" onClick={() => removeOpening(index)} aria-label={`Remove ${opening.type} #${index + 1}`}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Stack>
 
-          <Stack direction="row" spacing={1} mb={1}>
-            <TextField
-              label="Width (in)"
-              type="number"
-              size="small"
-              value={opening.widthInches}
-              onChange={(e) => updateOpening(index, { widthInches: Number(e.target.value) })}
-              inputProps={{ min: 12, max: 120 }}
-              sx={{ flex: 1 }}
-            />
-            <TextField
-              label="Height (in)"
-              type="number"
-              size="small"
-              value={opening.heightInches}
-              onChange={(e) => updateOpening(index, { heightInches: Number(e.target.value) })}
-              inputProps={{ min: 12, max: 120 }}
-              sx={{ flex: 1 }}
-            />
-          </Stack>
+            <Stack direction="row" spacing={1} mb={1}>
+              <FormControl size="small" sx={{ minWidth: 80 }}>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={opening.type}
+                  label="Type"
+                  onChange={(e) => updateOpening(index, { type: e.target.value as OpeningType })}
+                >
+                  <MenuItem value="Door">Door</MenuItem>
+                  <MenuItem value="Window">Window</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 80 }}>
+                <InputLabel>Wall</InputLabel>
+                <Select
+                  value={opening.wall}
+                  label="Wall"
+                  onChange={(e) => updateOpening(index, { wall: e.target.value as WallSide })}
+                >
+                  <MenuItem value="Front">Front</MenuItem>
+                  <MenuItem value="Back">Back</MenuItem>
+                  <MenuItem value="Left">Left</MenuItem>
+                  <MenuItem value="Right">Right</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
 
-          <Stack direction="row" spacing={1}>
-            <TextField
-              label="Offset (in)"
-              type="number"
-              size="small"
-              value={opening.offsetInches}
-              onChange={(e) => updateOpening(index, { offsetInches: Number(e.target.value) })}
-              inputProps={{ min: 0 }}
-              sx={{ flex: 1 }}
-            />
-            <TextField
-              label="Sill (in)"
-              type="number"
-              size="small"
-              value={opening.sillHeightInches}
-              onChange={(e) => updateOpening(index, { sillHeightInches: Number(e.target.value) })}
-              inputProps={{ min: 0 }}
-              sx={{ flex: 1 }}
-            />
-          </Stack>
-        </Box>
-      ))}
+            <Stack direction="row" spacing={1} mb={1}>
+              <TextField
+                label="Width (in)"
+                type="number"
+                size="small"
+                value={opening.widthInches}
+                onChange={(e) => updateOpening(index, { widthInches: Number(e.target.value) })}
+                inputProps={{ min: 12, max: 120 }}
+                error={tooWide}
+                helperText={tooWide ? 'Exceeds wall' : undefined}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Height (in)"
+                type="number"
+                size="small"
+                value={opening.heightInches}
+                onChange={(e) => updateOpening(index, { heightInches: Number(e.target.value) })}
+                inputProps={{ min: 12, max: 120 }}
+                error={tooTall}
+                helperText={tooTall ? 'Exceeds wall' : undefined}
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Offset (in)"
+                type="number"
+                size="small"
+                value={opening.offsetInches}
+                onChange={(e) => updateOpening(index, { offsetInches: Number(e.target.value) })}
+                inputProps={{ min: 0 }}
+                error={tooWide}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Sill (in)"
+                type="number"
+                size="small"
+                value={opening.sillHeightInches}
+                onChange={(e) => updateOpening(index, { sillHeightInches: Number(e.target.value) })}
+                inputProps={{ min: 0 }}
+                error={tooTall}
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+
+            {(tooWide || tooTall) && (
+              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                Opening does not fit on the {opening.wall.toLowerCase()} wall ({wallWidthIn}&quot; × {wallHeightIn}&quot;)
+              </Typography>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
 });
