@@ -74,9 +74,8 @@ describe('DesignList', () => {
       />
     );
 
-    // Click the delete icon for first design
-    const deleteButtons = screen.getAllByTestId('DeleteIcon');
-    await userEvent.click(deleteButtons[0]);
+    // Click the delete button for first design
+    await userEvent.click(screen.getByLabelText('Delete Shed A'));
 
     // Confirmation dialog should appear
     expect(screen.getByText('Delete Design')).toBeInTheDocument();
@@ -148,8 +147,7 @@ describe('DesignList', () => {
       />
     );
 
-    const deleteButtons = screen.getAllByTestId('DeleteIcon');
-    await userEvent.click(deleteButtons[0]);
+    await userEvent.click(screen.getByLabelText('Delete Shed A'));
 
     expect(screen.getByText('Delete Design')).toBeInTheDocument();
 
