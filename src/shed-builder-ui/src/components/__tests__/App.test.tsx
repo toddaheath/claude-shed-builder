@@ -205,6 +205,87 @@ describe('App', () => {
     });
   });
 
+  it('shows change password button when authenticated', async () => {
+    const { getStoredToken } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Change password')).toBeInTheDocument();
+    });
+
+    unmount();
+  });
+
+  it('opens change password dialog', async () => {
+    const { getStoredToken } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Change password')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByLabelText('Change password'));
+
+    expect(screen.getByLabelText('Current Password')).toBeInTheDocument();
+    expect(screen.getByLabelText('New Password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Change Password/i })).toBeInTheDocument();
+
+    unmount();
+  });
+
+  it('changes password successfully', async () => {
+    const { getStoredToken, api: mockApi } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+    vi.mocked(mockApi.changePassword).mockResolvedValue(undefined as never);
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Change password')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByLabelText('Change password'));
+    await userEvent.type(screen.getByLabelText('Current Password'), 'OldPass123!@');
+    await userEvent.type(screen.getByLabelText('New Password'), 'NewPass456!@');
+    await userEvent.click(screen.getByRole('button', { name: /Change Password/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Password changed successfully.')).toBeInTheDocument();
+    });
+
+    expect(mockApi.changePassword).toHaveBeenCalledWith('OldPass123!@', 'NewPass456!@');
+
+    unmount();
+  });
+
+  it('shows error on change password failure', async () => {
+    const { getStoredToken, api: mockApi, extractApiError } = await getApi();
+    vi.mocked(getStoredToken).mockReturnValue('valid-token');
+    vi.mocked(mockApi.changePassword).mockRejectedValue(new Error('wrong password'));
+    vi.mocked(extractApiError).mockReturnValue('Current password is incorrect.');
+
+    const { unmount } = render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Change password')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByLabelText('Change password'));
+    await userEvent.type(screen.getByLabelText('Current Password'), 'WrongPass123!');
+    await userEvent.type(screen.getByLabelText('New Password'), 'NewPass456!@');
+    await userEvent.click(screen.getByRole('button', { name: /Change Password/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Current password is incorrect.')).toBeInTheDocument();
+    });
+
+    unmount();
+  });
+
   it('toggles dark mode when authenticated', async () => {
     const { getStoredToken } = await getApi();
     vi.mocked(getStoredToken).mockReturnValue('valid-token');

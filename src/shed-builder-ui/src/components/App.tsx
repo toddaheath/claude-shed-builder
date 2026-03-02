@@ -15,12 +15,17 @@ import {
   Alert,
   Paper,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LogoutIcon from '@mui/icons-material/Logout';
+import LockIcon from '@mui/icons-material/Lock';
 import CircularProgress from '@mui/material/CircularProgress';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -207,6 +212,81 @@ function LoginScreen({
 }
 
 // ---------------------------------------------------------------------------
+// ChangePasswordDialog
+// ---------------------------------------------------------------------------
+
+function ChangePasswordDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!currentPassword || !newPassword) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err: unknown) {
+      setError(extractApiError(err, 'Failed to change password.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setError(null);
+    setSuccess(false);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose}>
+      <DialogTitle>Change Password</DialogTitle>
+      <DialogContent>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>Password changed successfully.</Alert>}
+        <TextField
+          label="Current Password"
+          type="password"
+          fullWidth
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          sx={{ mt: 1, mb: 2 }}
+        />
+        <TextField
+          label="New Password"
+          type="password"
+          fullWidth
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          helperText="Min 12 characters, must include a digit and a special character"
+          inputProps={{ minLength: 12 }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={loading || !currentPassword || !newPassword}>
+          {loading ? 'Changing…' : 'Change Password'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // AuthenticatedApp
 // ---------------------------------------------------------------------------
 
@@ -237,6 +317,7 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
 
   const [rightTab, setRightTab] = useState(0);
   const [localDesign, setLocalDesign] = useState<Design | null>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Undo/redo stacks
   const undoStackRef = useRef<Design[]>([]);
@@ -398,6 +479,11 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
               {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           </Tooltip>
+          <Tooltip title="Change password">
+            <IconButton color="inherit" onClick={() => setChangePasswordOpen(true)} aria-label="Change password">
+              <LockIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Sign out">
             <IconButton color="inherit" onClick={onSignOut} aria-label="Sign out">
               <LogoutIcon />
@@ -525,6 +611,7 @@ function AuthenticatedApp({ mode, toggleDarkMode, onSignOut }: AuthenticatedAppP
           </Box>
         </Drawer>
       )}
+      <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
       <Snackbar
         open={!!apiError}
         autoHideDuration={5000}
