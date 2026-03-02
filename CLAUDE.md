@@ -24,6 +24,9 @@ cd src/ShedBuilder.Api && dotnet run
 # Frontend dev server
 cd src/shed-builder-ui && npm run dev
 
+# Frontend tests
+cd src/shed-builder-ui && npm test
+
 # Docker Compose (full stack)
 docker-compose up --build
 
@@ -58,7 +61,7 @@ helm template deploy/helm/shed-builder
 - API returns JSON with camelCase property names (default)
 - RoofType enum: Gable, LeanTo
 - Dimensions are stored as feet + inches (int pairs)
-- All NuGet packages pinned to 8.0.11 for EF Core compatibility
+- EF Core packages pinned to 8.0.x (Npgsql at 8.0.11, Identity/JwtBearer at 8.0.24)
 - Rate limiting on auth endpoints (login: 5/min, register: 3/5min) — disabled in integration tests via `DISABLE_RATE_LIMITING=true` config flag
 - Auth endpoints: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/change-password` (requires `[Authorize]`)
 - Password requirements: min 12 characters, must include a digit and a special character
