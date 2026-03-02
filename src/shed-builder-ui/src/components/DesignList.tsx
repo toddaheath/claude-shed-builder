@@ -138,6 +138,12 @@ export default memo(function DesignList({ designs, selectedId, onSelect, onCreat
         </Typography>
       )}
 
+      {designs.length > 0 && filtered.length === 0 && search.trim() !== '' && (
+        <Typography variant="body2" color="text.secondary" textAlign="center" mt={2}>
+          No designs match &quot;{search.trim()}&quot;
+        </Typography>
+      )}
+
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
         <DialogTitle>Delete Design</DialogTitle>
         <DialogContent>

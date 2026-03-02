@@ -270,6 +270,29 @@ describe('DesignList', () => {
     expect(onDuplicate).toHaveBeenCalledWith(mockDesigns[0]);
   });
 
+  it('shows no-results message when search matches nothing', async () => {
+    const fourDesigns: Design[] = [
+      { ...mockDesigns[0], id: '1', name: 'Garden Shed' },
+      { ...mockDesigns[1], id: '2', name: 'Workshop' },
+      { ...mockDesigns[0], id: '3', name: 'Garden Office' },
+      { ...mockDesigns[1], id: '4', name: 'Tool Shed' },
+    ];
+    render(
+      <DesignList
+        designs={fourDesigns}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    const searchInput = screen.getByPlaceholderText('Search designs...');
+    await userEvent.type(searchInput, 'zzz');
+
+    expect(screen.getByText(/No designs match "zzz"/)).toBeInTheDocument();
+  });
+
   it('hides duplicate button when onDuplicate is not provided', () => {
     render(
       <DesignList
