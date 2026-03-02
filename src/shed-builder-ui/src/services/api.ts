@@ -68,8 +68,8 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     client.post('/auth/change-password', { currentPassword, newPassword }),
 
-  listDesigns: () =>
-    client.get<{ items: Design[]; totalCount: number }>('/designs').then((r) => r.data),
+  listDesigns: (page = 1, pageSize = 100) =>
+    client.get<{ items: Design[]; totalCount: number }>('/designs', { params: { page, pageSize } }).then((r) => r.data),
 
   getDesign: (id: string) =>
     client.get<Design>(`/designs/${id}`).then((r) => r.data),
