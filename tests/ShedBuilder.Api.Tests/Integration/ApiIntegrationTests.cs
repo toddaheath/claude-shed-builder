@@ -774,6 +774,56 @@ public class ApiIntegrationTests : IClassFixture<CustomWebAppFactory>
     }
 
     [Fact]
+    public async Task Create_NonOverlappingOpeningsOnDifferentWalls_Succeeds()
+    {
+        await CreateAuthenticatedUser("DiffWalls", $"diffwalls-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Different Walls",
+            WidthFeet = 10,
+            DepthFeet = 10,
+            HeightFeet = 8,
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                new() { Type = OpeningType.Door, Wall = WallSide.Front, OffsetInches = 12, WidthInches = 36, HeightInches = 80, SillHeightInches = 0 },
+                new() { Type = OpeningType.Window, Wall = WallSide.Right, OffsetInches = 12, WidthInches = 36, HeightInches = 36, SillHeightInches = 36 },
+                new() { Type = OpeningType.Window, Wall = WallSide.Back, OffsetInches = 24, WidthInches = 30, HeightInches = 30, SillHeightInches = 40 },
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var design = await ReadJson<DesignResponse>(response.Content);
+        Assert.Equal(3, design!.Openings.Count);
+    }
+
+    [Fact]
+    public async Task Create_SideWallOpeningExceedsDepth_Returns400()
+    {
+        await CreateAuthenticatedUser("SideWall", $"sidewall-{Guid.NewGuid()}@test.com");
+
+        var create = new CreateDesignRequest
+        {
+            Name = "Side Wall Test",
+            WidthFeet = 10,
+            DepthFeet = 8, // 96 inches
+            HeightFeet = 8,
+            RoofPitch = 4,
+            Openings = new List<OpeningDto>
+            {
+                // Right wall uses depth, not width — offset 60 + width 48 = 108 > 96
+                new() { Type = OpeningType.Door, Wall = WallSide.Right, OffsetInches = 60, WidthInches = 48, HeightInches = 80, SillHeightInches = 0 }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/designs", create, JsonOptions);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task VersionRestore_PreservesAllDimensions()
     {
         await CreateAuthenticatedUser("VerDims", $"verdims-{Guid.NewGuid()}@test.com");
