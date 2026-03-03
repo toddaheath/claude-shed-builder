@@ -264,6 +264,10 @@ namespace ShedBuilder.Api.Data.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("openings");
 
+                    b.Property<int>("RoofOverhangInches")
+                        .HasColumnType("integer")
+                        .HasColumnName("roof_overhang_inches");
+
                     b.Property<decimal>("RoofPitch")
                         .HasColumnType("numeric")
                         .HasColumnName("roof_pitch");
@@ -340,6 +344,10 @@ namespace ShedBuilder.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("openings");
+
+                    b.Property<int>("RoofOverhangInches")
+                        .HasColumnType("integer")
+                        .HasColumnName("roof_overhang_inches");
 
                     b.Property<decimal>("RoofPitch")
                         .HasColumnType("numeric")
